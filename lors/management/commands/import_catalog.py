@@ -31,6 +31,10 @@ duplicates are preserved and reruns stay idempotent.
 Rows that don't fit this shape (missing name, oversized junk cell, a
 "model-shaped" row with fields but a name that doesn't look like a model)
 are skipped and logged rather than guessed at.
+
+car_type/package are strict single-choice fields (see CarModel.CAR_TYPE_CHOICES /
+PACKAGE_CHOICES); rows with several comma-separated values in those cells keep
+just the first and log the rest instead of being skipped.
 """
 
 import pathlib
@@ -56,6 +60,11 @@ FIELD_COLUMNS = {
 MAX_NAME_LENGTH = 500
 MAX_BRAND_NAME_LENGTH = 40
 WELL_FORMED_NAME = re.compile(r'\(|\d{4}')  # has a parenthesis or a 4-digit year
+
+# car_type/package are strict single-choice dropdowns (see CarModel.CAR_TYPE_CHOICES /
+# PACKAGE_CHOICES) but the sheet sometimes crams several comma-separated values into one
+# cell — keep just the first so the value matches the choices.
+COMBO_FIELDS = ['car_type', 'package']
 
 
 def normalize(text):
@@ -99,6 +108,12 @@ class Command(BaseCommand):
             fields = {key: row[col].strip() for key, col in FIELD_COLUMNS.items()}
             has_fields = any(fields.values())
 
+            for field in COMBO_FIELDS:
+                if ',' in fields[field]:
+                    original = fields[field]
+                    fields[field] = original.split(',')[0].strip()
+                    anomalies.append(f'row {row_idx}: {field} had combined values {original!r}, kept {fields[field]!r}')
+
             if not name and not has_fields:
                 continue
 
@@ -137,7 +152,7 @@ class Command(BaseCommand):
         ))
 
         if anomalies:
-            self.stdout.write(self.style.WARNING(f'{len(anomalies)} rows skipped:'))
+            self.stdout.write(self.style.WARNING(f'{len(anomalies)} rows need attention (skipped or auto-fixed):'))
             for line in anomalies:
                 self.stdout.write(f'  - {line}')
 

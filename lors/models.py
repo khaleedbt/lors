@@ -14,13 +14,45 @@ class Brand(models.Model):
 
 
 class CarModel(models.Model):
+    CAR_TYPE_CHOICES = [
+        ('تكسي عادي', 'تكسي عادي'),
+        ('خمس أبواب (هاش باك)', 'خمس أبواب (هاش باك)'),
+        ('ثلاث أبواب (هاش باك)', 'ثلاث أبواب (هاش باك)'),
+        ('بابين (كوبي)', 'بابين (كوبي)'),
+        ('كوبي بابين', 'كوبي بابين'),
+        ('اربع ابواب (كوبي)', 'اربع ابواب (كوبي)'),
+        ('بيك آب', 'بيك آب'),
+        ('باكاج طويل', 'باكاج طويل'),
+    ]
+    DRIVER_CUT_CHOICES = [
+        ('دعسة مقصوصة', 'دعسة مقصوصة'),
+        ('دعسة من تحت', 'دعسة من تحت'),
+        ('بدون دعسة', 'بدون دعسة'),
+        ('3D', '3D'),
+    ]
+    PACKAGE_CHOICES = [
+        ('قطعة واحدة', 'قطعة واحدة'),
+        ('2 قطع', '2 قطع'),
+        ('3 قطع', '3 قطع'),
+        ('أربع قطع', 'أربع قطع'),
+        ('لايوجد باكاج', 'لايوجد باكاج'),
+    ]
+    SECOND_ROW_PACKAGE_CHOICES = [
+        ('قطعة واحدة', 'قطعة واحدة'),
+        ('2 قطع', '2 قطع'),
+        ('3 قطع', '3 قطع'),
+        ('قطعة واحدة + 3 قطع', 'قطعة واحدة + 3 قطع'),
+    ]
+
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='car_models')
     name = models.CharField(max_length=255)
     template_code = models.CharField('код шаблона', max_length=50, blank=True)
-    car_type = models.CharField('тип автомобиля', max_length=255, blank=True)
-    driver_cut = models.CharField('шофёр', max_length=255, blank=True)
-    package = models.CharField('пакет', max_length=255, blank=True)
-    second_row_package = models.CharField('пакет 2-й ряд', max_length=255, blank=True)
+    car_type = models.CharField('тип автомобиля', max_length=255, choices=CAR_TYPE_CHOICES, blank=True)
+    driver_cut = models.CharField('шофёр', max_length=255, choices=DRIVER_CUT_CHOICES, blank=True)
+    package = models.CharField('пакет', max_length=255, choices=PACKAGE_CHOICES, blank=True)
+    second_row_package = models.CharField(
+        'пакет 2-й ряд', max_length=255, choices=SECOND_ROW_PACKAGE_CHOICES, blank=True,
+    )
     notes = models.TextField('примечания', blank=True)
     video_url = models.URLField('ссылка на видео', max_length=500, blank=True)
     sheet_row = models.PositiveIntegerField('строка в исходной таблице', unique=True, null=True, blank=True)
