@@ -64,8 +64,13 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
 
 - `GET /api/brands/` — `?search=<name>`
 - `GET /api/car-models/` — `?search=<название модели ИЛИ марки>&brand=<id>&brand_name=<icontains>&template_code=<icontains>&car_type=<icontains>`.
-  Поиск по марке ищет и по названию модели, и по имени бренда — `?search=BMW`
-  вернёт все модели BMW, даже если «BMW» не входит в название модели.
+  `search` работает в две ступени (`CarModelViewSet._search` в `lors/views.py`):
+  сначала ищет точное совпадение по названию модели/коду/марке
+  (`?search=BMW` → все модели BMW; `?search=Subaru XV` → только модели
+  «Subaru XV», если они есть); если совпадений нет, а в запросе
+  распознаётся название марки (`?search=Subaru BRZ`, такой модели в
+  каталоге нет) — откатывается на все модели этой марки, вместо пустого
+  результата.
 - `POST /api/complaints/` — публично, без авторизации. `multipart/form-data`:
   `car_model` (id, необязательно), `name`, `phone`, `text`,
   `uploaded_photos` (несколько файлов под одним ключом).
@@ -75,6 +80,11 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
   сайта: адрес + координаты, «о компании», ссылки на Instagram/Telegram/
   WhatsApp. Редактируется только в `/admin/` (модель `SiteSettings` —
   синглтон, вторую запись создать нельзя).
+- `POST /api/reviews/` — публично, без авторизации. `multipart/form-data`:
+  `name`, `text`, `photo` (одно фото, необязательно).
+- `GET /api/reviews/` и `GET /api/reviews/<id>/` — тоже публично, но
+  показывают только отзывы с `is_published=True` — публикация отзыва
+  вручную через `/admin/` (модерация перед показом на сайте).
 
 Browsable API доступен там же в браузере; `/api-auth/` — логин для него.
 

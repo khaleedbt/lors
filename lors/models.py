@@ -61,6 +61,20 @@ class ComplaintPhoto(models.Model):
     image = models.ImageField(upload_to='complaints/%Y/%m/')
 
 
+class Review(models.Model):
+    name = models.CharField('имя', max_length=150)
+    text = models.TextField('текст отзыва')
+    photo = models.ImageField('фото', upload_to='reviews/%Y/%m/', blank=True)
+    is_published = models.BooleanField('опубликован', default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+
 class SiteSettings(models.Model):
     address = models.CharField('адрес', max_length=500, blank=True)
     latitude = models.DecimalField('широта', max_digits=9, decimal_places=6, null=True, blank=True)

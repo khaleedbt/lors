@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, CarModel, Complaint, ComplaintPhoto, SiteSettings
+from .models import Brand, CarModel, Complaint, ComplaintPhoto, Review, SiteSettings
 
 
 class CarModelSerializer(serializers.ModelSerializer):
@@ -51,6 +51,13 @@ class ComplaintSerializer(serializers.ModelSerializer):
             ComplaintPhoto(complaint=complaint, image=image) for image in photos
         )
         return complaint
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'name', 'text', 'photo', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class SiteSettingsSerializer(serializers.ModelSerializer):
