@@ -6,6 +6,8 @@ class Brand(models.Model):
 
     class Meta:
         ordering = ['name']
+        verbose_name = 'марка'
+        verbose_name_plural = 'марки'
 
     def __str__(self):
         return self.name
@@ -25,6 +27,8 @@ class CarModel(models.Model):
 
     class Meta:
         ordering = ['brand__name', 'name']
+        verbose_name = 'модель автомобиля'
+        verbose_name_plural = 'модели автомобилей'
 
     def __str__(self):
         return f'{self.brand.name} {self.name}'
@@ -51,6 +55,8 @@ class Complaint(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'жалоба'
+        verbose_name_plural = 'жалобы'
 
     def __str__(self):
         return f'{self.name} ({self.get_status_display()})'
@@ -59,6 +65,10 @@ class Complaint(models.Model):
 class ComplaintPhoto(models.Model):
     complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE, related_name='photos')
     image = models.ImageField(upload_to='complaints/%Y/%m/')
+
+    class Meta:
+        verbose_name = 'фото жалобы'
+        verbose_name_plural = 'фото жалобы'
 
 
 class Review(models.Model):
@@ -70,6 +80,8 @@ class Review(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'отзыв'
+        verbose_name_plural = 'отзывы'
 
     def __str__(self):
         return self.name

@@ -1,0 +1,15 @@
+{% extends "admin/index.html" %}
+{% load unfold %}
+
+{% block content %}
+<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {% for item in kpi %}
+        {% component "unfold/components/card.html" with icon=item.icon %}
+            <div class="text-sm text-base-500 dark:text-base-400">{{ item.title }}</div>
+            <div class="text-2xl font-semibold text-base-900 dark:text-base-100">{{ item.value }}</div>
+        {% endcomponent %}
+    {% endfor %}
+</div>
+
+{{ block.super }}
+{% endblock %}

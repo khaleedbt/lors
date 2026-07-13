@@ -29,6 +29,13 @@ class CarModelAdmin(ModelAdmin):
     list_filter = ['brand']
     search_fields = ['name', 'template_code']
     autocomplete_fields = ['brand']
+    fieldsets = (
+        (None, {'fields': ('brand', 'name')}),
+        ('Шаблон и характеристики', {
+            'fields': ('template_code', 'car_type', 'driver_cut', 'package', 'second_row_package'),
+        }),
+        ('Дополнительно', {'fields': ('notes', 'video_url', 'sheet_row')}),
+    )
 
 
 class ComplaintPhotoInline(TabularInline):
@@ -52,6 +59,12 @@ class ComplaintAdmin(ModelAdmin):
     search_fields = ['name', 'phone', 'text']
     autocomplete_fields = ['car_model']
     inlines = [ComplaintPhotoInline]
+    readonly_fields = ['created_at']
+    fieldsets = (
+        ('Заявитель', {'fields': ('name', 'phone')}),
+        ('Жалоба', {'fields': ('car_model', 'text', 'status')}),
+        ('Служебное', {'fields': ('created_at',)}),
+    )
 
 
 @admin.register(Review)
@@ -60,8 +73,12 @@ class ReviewAdmin(ModelAdmin):
     list_filter = ['is_published']
     list_editable = ['is_published']
     search_fields = ['name', 'text']
-    readonly_fields = ['preview']
-    fields = ['name', 'text', 'photo', 'preview', 'is_published']
+    readonly_fields = ['preview', 'created_at']
+    fieldsets = (
+        (None, {'fields': ('name', 'text')}),
+        ('Фото', {'fields': ('photo', 'preview')}),
+        ('Публикация', {'fields': ('is_published', 'created_at')}),
+    )
 
     @admin.display(description='превью')
     def preview(self, obj):
@@ -72,7 +89,11 @@ class ReviewAdmin(ModelAdmin):
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(ModelAdmin):
-    fields = ['address', 'latitude', 'longitude', 'about', 'instagram_url', 'telegram_url', 'whatsapp_url']
+    fieldsets = (
+        ('Геолокация', {'fields': ('address', 'latitude', 'longitude')}),
+        ('О компании', {'fields': ('about',)}),
+        ('Соцсети', {'fields': ('instagram_url', 'telegram_url', 'whatsapp_url')}),
+    )
 
     def has_add_permission(self, request):
         return not SiteSettings.objects.exists()

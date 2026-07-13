@@ -58,6 +58,11 @@ python manage.py runserver
 
 Админка: http://127.0.0.1:8000/admin/
 
+На главной странице админки — дашборд с KPI-плитками (марок, моделей в
+каталоге, новых жалоб, отзывов на модерации): `lors/dashboard.py`
+(`UNFOLD["DASHBOARD_CALLBACK"]` в `config/settings.py`) + шаблон
+`templates/admin/index.html`, расширяющий стандартный шаблон Unfold.
+
 ## API
 
 DRF-эндпоинты с поиском (`?search=`) и фильтрами:
