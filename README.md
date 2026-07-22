@@ -188,3 +188,35 @@ Instagram:
   `handle_message`; будущий Instagram-адаптер будет звать ту же функцию
 - `assistant.BotMessage` — лог всех сообщений (in/out) для просмотра в
   `/admin/assistant/botmessage/`, только для чтения
+
+## Прод (nginx + gunicorn), домен lorssy.com
+
+Конфиги — в `deploy/`:
+
+- `deploy/nginx_lorssy.com.conf` — server-блок nginx: проксирует `/` на
+  gunicorn (`127.0.0.1:8001`), отдаёт `/static/` и `/media/` напрямую.
+- `deploy/lors.service` — systemd-юнит для gunicorn.
+- `deploy/lors-bot.service` — systemd-юнит для `manage.py runbot`.
+
+Пути внутри рассчитаны на `/home/halid/app/lors` — поправь, если у тебя иначе.
+
+Установка на сервере:
+
+```bash
+cd /home/halid/app/lors
+python manage.py collectstatic --noinput
+
+sudo cp deploy/lors.service deploy/lors-bot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now lors lors-bot
+
+sudo cp deploy/nginx_lorssy.com.conf /etc/nginx/sites-available/lorssy.com
+sudo ln -s /etc/nginx/sites-available/lorssy.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Перед этим в прод `.env`:
+- `ALLOWED_HOSTS=lorssy.com,www.lorssy.com` (иначе Django ответит `DisallowedHost`)
+- `DEBUG=False`
+
+HTTPS (Let's Encrypt) — отдельно, самостоятельно (`certbot --nginx -d lorssy.com -d www.lorssy.com`).

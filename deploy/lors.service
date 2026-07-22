@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn для LORS (lorssy.com)
+After=network.target
+
+[Service]
+User=halid
+WorkingDirectory=/home/halid/app/lors
+EnvironmentFile=/home/halid/app/lors/.env
+ExecStart=/home/halid/app/lors/.venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8001 config.wsgi:application
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
