@@ -1,4 +1,3 @@
-from django.db.models import Q
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, viewsets
@@ -6,6 +5,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 
 from .filters import CarModelFilter
 from .models import Brand, CarModel, Complaint, Review, SiteSettings
+from .search import smart_search_car_models
 from .serializers import (
     BrandSerializer, CarModelSerializer, ComplaintSerializer, ReviewSerializer, SiteSettingsSerializer,
 )
@@ -38,33 +38,10 @@ class CarModelViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = CarModelFilter
 
     def get_queryset(self):
-        qs = super().get_queryset()
         search = self.request.query_params.get('search', '').strip()
         if not search:
-            return qs
-        return self._search(qs, search)
-
-    def _search(self, qs, search):
-        exact = qs.filter(
-            Q(name__icontains=search) | Q(template_code__icontains=search) | Q(brand__name__icontains=search)
-        )
-        if exact.exists():
-            return exact
-
-        brand = self._match_brand(search)
-        if brand:
-            return qs.filter(brand=brand)
-        return qs.none()
-
-    @staticmethod
-    def _match_brand(search):
-        words = search.split()
-        for word_count in range(len(words), 0, -1):
-            candidate = ' '.join(words[:word_count])
-            brand = Brand.objects.filter(name__icontains=candidate).first()
-            if brand:
-                return brand
-        return None
+            return super().get_queryset()
+        return smart_search_car_models(search)
 
 
 class ComplaintViewSet(

@@ -9,6 +9,7 @@ Django-проект каталога лекал автоковриков (LORS S
 - [django-unfold](https://github.com/unfoldadmin/django-unfold) — тема админки
 - Django REST Framework + django-filter — API
 - drf-spectacular — OpenAPI-схема / Swagger UI
+- aiogram + Anthropic Claude — Telegram-бот с ИИ-поиском по каталогу
 - `python-decouple` — конфиг через `.env`
 
 ## Установка
@@ -47,6 +48,8 @@ cp .env.example .env
 | `DB_PASSWORD`   | пароль БД                            |
 | `DB_HOST`       | хост БД (`localhost`)                |
 | `DB_PORT`       | порт БД (`5432`)                     |
+| `TELEGRAM_BOT_TOKEN` | токен Telegram-бота (от @BotFather) |
+| `ANTHROPIC_API_KEY`  | ключ Claude API (для ИИ-бота)       |
 
 ## Запуск
 
@@ -57,6 +60,16 @@ python manage.py runserver
 ```
 
 Админка: http://127.0.0.1:8000/admin/
+
+### Бэкенд + бот одной командой
+
+```bash
+./run.sh
+```
+
+Поднимает `runserver` и `runbot` вместе (общая БД, общий `.env`), гасит оба
+по Ctrl+C. Либо запускать раздельно в двух терминалах — см. `python manage.py
+runserver` и раздел «Telegram-бот» ниже.
 
 На главной странице админки — дашборд с KPI-плитками (марок, моделей в
 каталоге, новых жалоб, отзывов на модерации): `lors/dashboard.py`
@@ -69,13 +82,15 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
 
 - `GET /api/brands/` — `?search=<name>`
 - `GET /api/car-models/` — `?search=<название модели ИЛИ марки>&brand=<id>&brand_name=<icontains>&template_code=<icontains>&car_type=<icontains>`.
-  `search` работает в две ступени (`CarModelViewSet._search` в `lors/views.py`):
-  сначала ищет точное совпадение по названию модели/коду/марке
+  `search` работает в две ступени (`smart_search_car_models` в `lors/search.py`,
+  переиспользуется и API, и Telegram-ботом — см. ниже):
+  сначала ищет точное совпадение по любому полю каталога — название модели,
+  код шаблона, марка, тип авто, тип шофёра, пакет, примечания
   (`?search=BMW` → все модели BMW; `?search=Subaru XV` → только модели
-  «Subaru XV», если они есть); если совпадений нет, а в запросе
-  распознаётся название марки (`?search=Subaru BRZ`, такой модели в
-  каталоге нет) — откатывается на все модели этой марки, вместо пустого
-  результата.
+  «Subaru XV»; `?search=ب-11` → модель с этим кодом шаблона); если совпадений
+  нет, а в запросе распознаётся название марки (`?search=Subaru BRZ`, такой
+  модели в каталоге нет) — откатывается на все модели этой марки, вместо
+  пустого результата.
 - `POST /api/complaints/` — публично, без авторизации. `multipart/form-data`:
   `car_model` (id, необязательно), `name`, `phone`, `text`,
   `uploaded_photos` (несколько файлов под одним ключом).
@@ -134,3 +149,42 @@ python manage.py import_catalog
 текст. В нескольких строках источника в одну ячейку через запятую было
 вписано сразу по несколько значений — импорт оставляет только первое и
 логирует остальное как аномалию.
+
+## Telegram-бот с ИИ-поиском
+
+```bash
+python manage.py runbot
+```
+
+Второй процесс рядом с `runserver` (общая БД через Django ORM, без HTTP-прыжка
+на собственный API). Нужны `TELEGRAM_BOT_TOKEN` (от [@BotFather](https://t.me/BotFather))
+и `ANTHROPIC_API_KEY` в `.env`.
+
+Клиент пишет боту на любом языке (упор на сирийский диалект арабского) — бот
+вызывает у Claude инструмент `search_car_models`, который под капотом дёргает
+тот же `smart_search_car_models` (`lors/search.py`), что и
+`/api/car-models/?search=`. Поиск идёт по всему каталогу, не только по
+марке/модели: код шаблона, тип авто, тип шофёра, пакет, примечания
+(`SEARCHABLE_FIELDS` в `lors/search.py`) — например, можно спросить прямо про
+код шаблона («есть код ب-11?»), и если ничего не нашлось, бот так и скажет,
+а не откажется искать. По найденной записи бот описывает, что есть для этой
+модели, и предлагает контакты для заказа (`SiteSettings` — адрес,
+Instagram/Telegram/WhatsApp).
+
+Бот помнит контекст переписки: перед каждым ответом `handle_message`
+(`assistant/brain.py`) подтягивает последние `HISTORY_LIMIT` сообщений этого
+пользователя из лога `BotMessage` и передаёт их в Claude как историю
+диалога — так «2013 год» после «BMW X5» понимается как уточнение к прошлому
+вопросу, а не новый пустой запрос.
+
+Устройство — «мозг» отдельно от канала, чтобы потом так же подключить
+Instagram:
+
+- `assistant/brain.py` — `handle_message(text, channel, external_user_id)`,
+  канал-агностичная точка входа
+- `assistant/claude_client.py` — вызов Claude (`claude-opus-4-8`, ручной
+  tool-use цикл, без beta tool_runner)
+- `assistant/management/commands/runbot.py` — aiogram-адаптер поверх
+  `handle_message`; будущий Instagram-адаптер будет звать ту же функцию
+- `assistant.BotMessage` — лог всех сообщений (in/out) для просмотра в
+  `/admin/assistant/botmessage/`, только для чтения

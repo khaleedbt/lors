@@ -44,7 +44,11 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
     'lors',
+    'assistant',
 ]
+
+TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
