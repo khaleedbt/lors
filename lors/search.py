@@ -10,14 +10,21 @@ SEARCHABLE_FIELDS = [
 
 
 def smart_search_car_models(search: str):
-    """Exact match across every catalog field (model/brand name, template
-    code, car type, driver cut, package, notes); falls back to the whole
-    brand if nothing matches exactly (e.g. a model the catalog doesn't have)."""
+    """Match every word of the query against every catalog field (model/brand
+    name, template code, car type, driver cut, package, notes) — each word
+    must appear *somewhere* in the record, not the whole query as one
+    contiguous substring (so "BMW F10" matches "BMW 5 VI (F10) ..."). Falls
+    back to the whole brand if nothing matches (e.g. a model the catalog
+    doesn't have)."""
     qs = CarModel.objects.select_related('brand').all()
+    words = search.split()
     query = Q()
-    for field in SEARCHABLE_FIELDS:
-        query |= Q(**{f'{field}__icontains': search})
-    exact = qs.filter(query)
+    for word in words:
+        word_query = Q()
+        for field in SEARCHABLE_FIELDS:
+            word_query |= Q(**{f'{field}__icontains': word})
+        query &= word_query
+    exact = qs.filter(query) if words else qs.none()
     if exact.exists():
         return exact
 
