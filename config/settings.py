@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 
 from decouple import config
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -71,6 +72,45 @@ UNFOLD = {
     'SITE_TITLE': 'LORS admin',
     'SITE_HEADER': 'LORS',
     'DASHBOARD_CALLBACK': 'lors.dashboard.dashboard_callback',
+    'SIDEBAR': {
+        'show_all_applications': False,
+        'navigation': [
+            {
+                'items': [
+                    {
+                        'title': 'Марки',
+                        'icon': 'sell',
+                        'link': reverse_lazy('admin:lors_brand_changelist'),
+                    },
+                    {
+                        'title': 'Модели автомобилей',
+                        'icon': 'directions_car',
+                        'link': reverse_lazy('admin:lors_carmodel_changelist'),
+                    },
+                    {
+                        'title': 'Жалобы',
+                        'icon': 'report',
+                        'link': reverse_lazy('admin:lors_complaint_changelist'),
+                    },
+                    {
+                        'title': 'Отзывы',
+                        'icon': 'rate_review',
+                        'link': reverse_lazy('admin:lors_review_changelist'),
+                    },
+                    {
+                        'title': 'Настройки сайта',
+                        'icon': 'settings',
+                        'link': reverse_lazy('admin:lors_sitesettings_changelist'),
+                    },
+                    {
+                        'title': 'Пользователи',
+                        'icon': 'person',
+                        'link': reverse_lazy('admin:auth_user_changelist'),
+                    },
+                ],
+            },
+        ],
+    },
 }
 
 MIDDLEWARE = [
