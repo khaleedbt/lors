@@ -3,7 +3,8 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Review, SiteSettings,
+    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Product,
+    ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -69,6 +70,41 @@ class ColorAdmin(ModelAdmin):
             '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;'
             'background:{};border:1px solid #999;"></span>', obj.hex_code,
         )
+
+
+@admin.register(ProductCategory)
+class ProductCategoryAdmin(ModelAdmin):
+    list_display = ['name', 'order']
+    list_editable = ['order']
+    search_fields = ['name']
+
+
+class ProductVariantInline(TabularInline):
+    model = ProductVariant
+    extra = 0
+    fields = ['size', 'color', 'price', 'image', 'preview', 'is_active', 'order']
+    readonly_fields = ['preview']
+    autocomplete_fields = ['color']
+
+    @admin.display(description='превью')
+    def preview(self, obj):
+        if not obj.image:
+            return ''
+        return format_html('<img src="{}" style="max-height: 80px;">', obj.image.url)
+
+
+@admin.register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = ['name', 'category', 'is_active', 'order']
+    list_filter = ['category', 'is_active']
+    list_editable = ['order', 'is_active']
+    search_fields = ['name']
+    autocomplete_fields = ['category']
+    inlines = [ProductVariantInline]
+    fieldsets = (
+        (None, {'fields': ('category', 'name', 'description')}),
+        ('Публикация', {'fields': ('is_active', 'order')}),
+    )
 
 
 class ComplaintPhotoInline(TabularInline):

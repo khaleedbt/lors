@@ -110,6 +110,58 @@ class MatSetPrice(models.Model):
         return f'{self.car_model} × {self.material}: {self.price}'
 
 
+class ProductCategory(models.Model):
+    name = models.CharField('название', max_length=100, unique=True)
+    order = models.PositiveIntegerField('порядок', default=0)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name = 'категория товара'
+        verbose_name_plural = 'категории товаров'
+
+    def __str__(self):
+        return self.name
+
+
+class Product(models.Model):
+    category = models.ForeignKey(
+        ProductCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='products',
+    )
+    name = models.CharField('название', max_length=255)
+    description = models.TextField('описание', blank=True)
+    is_active = models.BooleanField('активен', default=True)
+    order = models.PositiveIntegerField('порядок', default=0)
+
+    class Meta:
+        ordering = ['category__order', 'order', 'name']
+        verbose_name = 'товар'
+        verbose_name_plural = 'товары'
+
+    def __str__(self):
+        return self.name
+
+
+class ProductVariant(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    size = models.CharField('размер', max_length=50, blank=True)
+    color = models.ForeignKey(
+        Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='product_variants',
+    )
+    price = models.DecimalField('цена', max_digits=10, decimal_places=2)
+    image = models.ImageField('фото', upload_to='products/%Y/%m/', blank=True)
+    is_active = models.BooleanField('активен', default=True)
+    order = models.PositiveIntegerField('порядок', default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'вариант товара'
+        verbose_name_plural = 'варианты товара'
+
+    def __str__(self):
+        parts = [self.product.name, self.size, self.color.name if self.color else '']
+        return ' — '.join(p for p in parts if p)
+
+
 class Complaint(models.Model):
     STATUS_NEW = 'new'
     STATUS_IN_PROGRESS = 'in_progress'

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
 from .models import (
-    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Review, SiteSettings,
+    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Product,
+    ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -35,6 +36,29 @@ class CarModelSerializer(serializers.ModelSerializer):
             'id', 'brand', 'name', 'template_code', 'car_type', 'driver_cut',
             'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'mat_prices',
         ]
+
+
+class ProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductCategory
+        fields = ['id', 'name']
+
+
+class ProductVariantSerializer(serializers.ModelSerializer):
+    color = ColorSerializer(read_only=True)
+
+    class Meta:
+        model = ProductVariant
+        fields = ['id', 'size', 'color', 'price', 'image']
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(slug_field='name', read_only=True)
+    variants = ProductVariantSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = ['id', 'category', 'name', 'description', 'variants']
 
 
 class BrandSerializer(serializers.ModelSerializer):

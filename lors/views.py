@@ -3,12 +3,17 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import generics, mixins, permissions, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 
+from django.db.models import Prefetch
+
 from .filters import CarModelFilter
-from .models import Brand, CarModel, Color, Complaint, Material, Page, Review, SiteSettings
+from .models import (
+    Brand, CarModel, Color, Complaint, Material, Page, Product, ProductCategory, ProductVariant, Review,
+    SiteSettings,
+)
 from .search import smart_search_car_models
 from .serializers import (
     BrandSerializer, CarModelSerializer, ColorSerializer, ComplaintSerializer, MaterialSerializer,
-    PageSerializer, ReviewSerializer, SiteSettingsSerializer,
+    PageSerializer, ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer,
 )
 
 
@@ -89,6 +94,21 @@ class ColorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Color.objects.filter(is_active=True)
     serializer_class = ColorSerializer
     permission_classes = [permissions.AllowAny]
+
+
+class ProductCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ProductCategory.objects.all()
+    serializer_class = ProductCategorySerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ProductViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Product.objects.filter(is_active=True).select_related('category').prefetch_related(
+        Prefetch('variants', queryset=ProductVariant.objects.filter(is_active=True).select_related('color')),
+    )
+    serializer_class = ProductSerializer
+    permission_classes = [permissions.AllowAny]
+    filterset_fields = ['category']
 
 
 class PageViewSet(viewsets.ReadOnlyModelViewSet):
