@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, CarModel, Complaint, ComplaintPhoto, Review, SiteSettings
+from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Review, SiteSettings
 
 
 class CarModelSerializer(serializers.ModelSerializer):
@@ -60,10 +60,15 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
 
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ['id', 'contact_type', 'label', 'value']
+
+
 class SiteSettingsSerializer(serializers.ModelSerializer):
+    contacts = ContactSerializer(many=True, read_only=True)
+
     class Meta:
         model = SiteSettings
-        fields = [
-            'address', 'latitude', 'longitude', 'about',
-            'instagram_url', 'telegram_url', 'whatsapp_url',
-        ]
+        fields = ['address', 'latitude', 'longitude', 'about', 'contacts']

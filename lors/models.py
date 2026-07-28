@@ -124,9 +124,6 @@ class SiteSettings(models.Model):
     latitude = models.DecimalField('широта', max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField('долгота', max_digits=9, decimal_places=6, null=True, blank=True)
     about = models.TextField('о компании', blank=True)
-    instagram_url = models.URLField('Instagram', blank=True)
-    telegram_url = models.URLField('Telegram', blank=True)
-    whatsapp_url = models.URLField('WhatsApp', blank=True)
 
     class Meta:
         verbose_name = 'настройки сайта'
@@ -143,3 +140,31 @@ class SiteSettings(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class Contact(models.Model):
+    TYPE_PHONE = 'phone'
+    TYPE_INSTAGRAM = 'instagram'
+    TYPE_TELEGRAM = 'telegram'
+    TYPE_WHATSAPP = 'whatsapp'
+    TYPE_CHOICES = [
+        (TYPE_PHONE, 'Телефон'),
+        (TYPE_INSTAGRAM, 'Instagram'),
+        (TYPE_TELEGRAM, 'Telegram'),
+        (TYPE_WHATSAPP, 'WhatsApp'),
+    ]
+
+    site_settings = models.ForeignKey(SiteSettings, on_delete=models.CASCADE, related_name='contacts')
+    contact_type = models.CharField('тип', max_length=20, choices=TYPE_CHOICES)
+    label = models.CharField('подпись', max_length=100, blank=True)
+    value = models.CharField('значение', max_length=255)
+    order = models.PositiveIntegerField('порядок', default=0)
+
+    class Meta:
+        ordering = ['contact_type', 'order', 'id']
+        verbose_name = 'контакт'
+        verbose_name_plural = 'контакты'
+
+    def __str__(self):
+        label = f' ({self.label})' if self.label else ''
+        return f'{self.get_contact_type_display()}{label}: {self.value}'

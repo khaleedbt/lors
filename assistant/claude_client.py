@@ -1,7 +1,7 @@
 import anthropic
 from django.conf import settings
 
-from lors.models import SiteSettings
+from lors.models import Contact, SiteSettings
 from lors.search import smart_search_car_models
 
 MODEL = 'claude-opus-4-8'
@@ -38,8 +38,20 @@ def _client():
     return anthropic.Anthropic()  # falls back to the SDK's own credential resolution
 
 
+def _format_contacts(contacts) -> str:
+    type_names = dict(Contact.TYPE_CHOICES)
+    by_type = {}
+    for c in contacts:
+        value = f'{c.value} ({c.label})' if c.label else c.value
+        by_type.setdefault(c.contact_type, []).append(value)
+    if not by_type:
+        return '—'
+    return '; '.join(f'{type_names[t]}: ' + ', '.join(vals) for t, vals in by_type.items())
+
+
 def _system_prompt() -> str:
     s = SiteSettings.load()
+    contacts_line = _format_contacts(s.contacts.all())
     return (
         'Ты — ассистент-консультант LORS SYRIA, компании по пошиву автоковриков по лекалам. '
         'Отвечай на языке клиента; если клиент пишет по-арабски — используй сирийский диалект.\n\n'
@@ -74,8 +86,7 @@ def _system_prompt() -> str:
         'когда это уместно. '
         'Если вопрос клиента не про каталог — отвечай как обычный дружелюбный ассистент компании, '
         'инструмент не вызывай.\n\n'
-        f'Контакты: адрес {s.address or "—"}, Instagram {s.instagram_url or "—"}, '
-        f'Telegram {s.telegram_url or "—"}, WhatsApp {s.whatsapp_url or "—"}.'
+        f'Контакты: адрес {s.address or "—"}. {contacts_line}.'
     )
 
 
