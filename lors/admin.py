@@ -2,7 +2,9 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Page, Review, SiteSettings
+from .models import (
+    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Review, SiteSettings,
+)
 
 
 class CarModelInline(TabularInline):
@@ -23,12 +25,20 @@ class BrandAdmin(ModelAdmin):
         return obj.car_models.count()
 
 
+class MatSetPriceInline(TabularInline):
+    model = MatSetPrice
+    extra = 0
+    fields = ['material', 'price']
+    autocomplete_fields = ['material']
+
+
 @admin.register(CarModel)
 class CarModelAdmin(ModelAdmin):
     list_display = ['name', 'brand', 'template_code', 'car_type']
     list_filter = ['brand']
     search_fields = ['name', 'template_code']
     autocomplete_fields = ['brand']
+    inlines = [MatSetPriceInline]
     fieldsets = (
         (None, {'fields': ('brand', 'name')}),
         ('Шаблон и характеристики', {
@@ -36,6 +46,29 @@ class CarModelAdmin(ModelAdmin):
         }),
         ('Дополнительно', {'fields': ('notes', 'video_url', 'sheet_row')}),
     )
+
+
+@admin.register(Material)
+class MaterialAdmin(ModelAdmin):
+    list_display = ['name', 'order', 'is_active']
+    list_editable = ['order', 'is_active']
+    search_fields = ['name']
+
+
+@admin.register(Color)
+class ColorAdmin(ModelAdmin):
+    list_display = ['name', 'swatch', 'hex_code', 'order', 'is_active']
+    list_editable = ['order', 'is_active']
+    search_fields = ['name']
+
+    @admin.display(description='')
+    def swatch(self, obj):
+        if not obj.hex_code:
+            return ''
+        return format_html(
+            '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;'
+            'background:{};border:1px solid #999;"></span>', obj.hex_code,
+        )
 
 
 class ComplaintPhotoInline(TabularInline):

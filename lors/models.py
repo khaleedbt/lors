@@ -66,6 +66,50 @@ class CarModel(models.Model):
         return f'{self.brand.name} {self.name}'
 
 
+class Material(models.Model):
+    name = models.CharField('название', max_length=100)
+    order = models.PositiveIntegerField('порядок', default=0)
+    is_active = models.BooleanField('активен', default=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'материал'
+        verbose_name_plural = 'материалы'
+
+    def __str__(self):
+        return self.name
+
+
+class Color(models.Model):
+    name = models.CharField('название', max_length=100)
+    hex_code = models.CharField('HEX-код', max_length=7, blank=True)
+    order = models.PositiveIntegerField('порядок', default=0)
+    is_active = models.BooleanField('активен', default=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'цвет'
+        verbose_name_plural = 'цвета'
+
+    def __str__(self):
+        return self.name
+
+
+class MatSetPrice(models.Model):
+    car_model = models.ForeignKey(CarModel, on_delete=models.CASCADE, related_name='mat_set_prices')
+    material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='prices')
+    price = models.DecimalField('цена', max_digits=10, decimal_places=2)
+
+    class Meta:
+        ordering = ['material__order']
+        unique_together = [('car_model', 'material')]
+        verbose_name = 'цена комплекта'
+        verbose_name_plural = 'цены комплектов'
+
+    def __str__(self):
+        return f'{self.car_model} × {self.material}: {self.price}'
+
+
 class Complaint(models.Model):
     STATUS_NEW = 'new'
     STATUS_IN_PROGRESS = 'in_progress'
