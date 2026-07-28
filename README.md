@@ -43,6 +43,7 @@ cp .env.example .env
 | `SECRET_KEY`    | Django secret key                    |
 | `DEBUG`         | режим отладки                        |
 | `ALLOWED_HOSTS` | список хостов через запятую          |
+| `CORS_ALLOWED_ORIGINS` | домены фронтенда через запятую (по умолчанию `lorssy.com`/`www.lorssy.com`; в `DEBUG` дополнительно разрешены типовые локальные dev-адреса) |
 | `DB_NAME`       | имя базы (`lors`)                    |
 | `DB_USER`       | пользователь БД (`lors_user`)        |
 | `DB_PASSWORD`   | пароль БД                            |

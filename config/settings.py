@@ -30,6 +30,20 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
+# Домен фронтенда, обращающегося к API. В разработке дополнительно разрешены
+# локальные адреса типовых dev-серверов (Vite/CRA/Next), чтобы фронтенд-команда
+# могла работать против локального или прод-бэкенда без правки .env на время разработки.
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='https://lorssy.com,https://www.lorssy.com',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
+)
+if DEBUG:
+    CORS_ALLOWED_ORIGINS += [
+        'http://localhost:3000', 'http://127.0.0.1:3000',
+        'http://localhost:5173', 'http://127.0.0.1:5173',
+    ]
+
 
 # Application definition
 
@@ -41,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
     'django_filters',
     'drf_spectacular',
@@ -115,6 +130,7 @@ UNFOLD = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
