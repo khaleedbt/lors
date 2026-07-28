@@ -4,11 +4,11 @@ from rest_framework import generics, mixins, permissions, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 
 from .filters import CarModelFilter
-from .models import Brand, CarModel, Complaint, Page, Review, SiteSettings
+from .models import Brand, CarModel, Color, Complaint, Material, Page, Review, SiteSettings
 from .search import smart_search_car_models
 from .serializers import (
-    BrandSerializer, CarModelSerializer, ComplaintSerializer, PageSerializer, ReviewSerializer,
-    SiteSettingsSerializer,
+    BrandSerializer, CarModelSerializer, ColorSerializer, ComplaintSerializer, MaterialSerializer,
+    PageSerializer, ReviewSerializer, SiteSettingsSerializer,
 )
 
 
@@ -34,7 +34,7 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     ),
 )
 class CarModelViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = CarModel.objects.select_related('brand').all()
+    queryset = CarModel.objects.select_related('brand').prefetch_related('mat_set_prices__material').all()
     serializer_class = CarModelSerializer
     filterset_class = CarModelFilter
 
@@ -77,6 +77,18 @@ class ReviewViewSet(
         if self.action == 'create':
             return qs
         return qs.filter(is_published=True)
+
+
+class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Material.objects.filter(is_active=True)
+    serializer_class = MaterialSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class ColorViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Color.objects.filter(is_active=True)
+    serializer_class = ColorSerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class PageViewSet(viewsets.ReadOnlyModelViewSet):

@@ -1,16 +1,39 @@
 from rest_framework import serializers
 
-from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Page, Review, SiteSettings
+from .models import (
+    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Review, SiteSettings,
+)
+
+
+class MaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Material
+        fields = ['id', 'name']
+
+
+class ColorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Color
+        fields = ['id', 'name', 'hex_code']
+
+
+class MatSetPriceSerializer(serializers.ModelSerializer):
+    material = MaterialSerializer(read_only=True)
+
+    class Meta:
+        model = MatSetPrice
+        fields = ['material', 'price']
 
 
 class CarModelSerializer(serializers.ModelSerializer):
     brand = serializers.SlugRelatedField(slug_field='name', read_only=True)
+    mat_prices = MatSetPriceSerializer(source='mat_set_prices', many=True, read_only=True)
 
     class Meta:
         model = CarModel
         fields = [
             'id', 'brand', 'name', 'template_code', 'car_type', 'driver_cut',
-            'package', 'second_row_package', 'notes', 'video_url', 'sheet_row',
+            'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'mat_prices',
         ]
 
 
