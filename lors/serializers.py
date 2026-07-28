@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Review, SiteSettings
+from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Page, Review, SiteSettings
 
 
 class CarModelSerializer(serializers.ModelSerializer):
@@ -64,6 +64,12 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = ['id', 'contact_type', 'label', 'value']
+
+
+class PageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Page
+        fields = ['slug', 'title', 'body', 'image', 'updated_at']
 
 
 class SiteSettingsSerializer(serializers.ModelSerializer):

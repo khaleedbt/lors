@@ -4,10 +4,11 @@ from rest_framework import generics, mixins, permissions, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
 
 from .filters import CarModelFilter
-from .models import Brand, CarModel, Complaint, Review, SiteSettings
+from .models import Brand, CarModel, Complaint, Page, Review, SiteSettings
 from .search import smart_search_car_models
 from .serializers import (
-    BrandSerializer, CarModelSerializer, ComplaintSerializer, ReviewSerializer, SiteSettingsSerializer,
+    BrandSerializer, CarModelSerializer, ComplaintSerializer, PageSerializer, ReviewSerializer,
+    SiteSettingsSerializer,
 )
 
 
@@ -76,6 +77,13 @@ class ReviewViewSet(
         if self.action == 'create':
             return qs
         return qs.filter(is_published=True)
+
+
+class PageViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Page.objects.all()
+    serializer_class = PageSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = 'slug'
 
 
 class SiteSettingsView(generics.RetrieveAPIView):

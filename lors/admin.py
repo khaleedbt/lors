@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Review, SiteSettings
+from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Page, Review, SiteSettings
 
 
 class CarModelInline(TabularInline):
@@ -85,6 +85,19 @@ class ReviewAdmin(ModelAdmin):
         if not obj.photo:
             return ''
         return format_html('<img src="{}" style="max-height: 120px;">', obj.photo.url)
+
+
+@admin.register(Page)
+class PageAdmin(ModelAdmin):
+    list_display = ['title', 'slug', 'updated_at']
+    search_fields = ['title', 'slug']
+    prepopulated_fields = {'slug': ('title',)}
+    readonly_fields = ['updated_at']
+    fieldsets = (
+        (None, {'fields': ('slug', 'title')}),
+        ('Содержимое', {'fields': ('body', 'image')}),
+        ('Служебное', {'fields': ('updated_at',)}),
+    )
 
 
 class ContactInline(TabularInline):

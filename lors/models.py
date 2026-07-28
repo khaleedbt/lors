@@ -170,3 +170,19 @@ class Contact(models.Model):
     def __str__(self):
         label = f' ({self.label})' if self.label else ''
         return f'{self.get_contact_type_display()}{label}: {self.value}'
+
+
+class Page(models.Model):
+    slug = models.SlugField('слаг', max_length=100, unique=True)
+    title = models.CharField('заголовок', max_length=255)
+    body = models.TextField('текст', blank=True)
+    image = models.ImageField('изображение', upload_to='pages/%Y/%m/', blank=True)
+    updated_at = models.DateTimeField('обновлено', auto_now=True)
+
+    class Meta:
+        ordering = ['slug']
+        verbose_name = 'страница'
+        verbose_name_plural = 'страницы'
+
+    def __str__(self):
+        return self.title
