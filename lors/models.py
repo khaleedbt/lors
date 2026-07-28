@@ -147,11 +147,13 @@ class Contact(models.Model):
     TYPE_INSTAGRAM = 'instagram'
     TYPE_TELEGRAM = 'telegram'
     TYPE_WHATSAPP = 'whatsapp'
+    TYPE_FACEBOOK = 'facebook'
     TYPE_CHOICES = [
         (TYPE_PHONE, 'Телефон'),
         (TYPE_INSTAGRAM, 'Instagram'),
         (TYPE_TELEGRAM, 'Telegram'),
         (TYPE_WHATSAPP, 'WhatsApp'),
+        (TYPE_FACEBOOK, 'Facebook'),
     ]
 
     site_settings = models.ForeignKey(SiteSettings, on_delete=models.CASCADE, related_name='contacts')
