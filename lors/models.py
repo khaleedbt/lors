@@ -229,8 +229,19 @@ class LeadPhoto(models.Model):
 
 
 class Review(models.Model):
+    RATING_CHOICES = [(n, str(n)) for n in range(1, 6)]
+
+    SOURCE_SITE = 'site'
+    SOURCE_GOOGLE = 'google'
+    SOURCE_CHOICES = [
+        (SOURCE_SITE, 'сайт'),
+        (SOURCE_GOOGLE, 'Google'),
+    ]
+
     name = models.CharField('имя', max_length=150)
     text = models.TextField('текст отзыва')
+    rating = models.PositiveSmallIntegerField('рейтинг', choices=RATING_CHOICES, default=5)
+    source = models.CharField('источник', max_length=20, choices=SOURCE_CHOICES, default=SOURCE_SITE)
     photo = models.ImageField('фото', upload_to='reviews/%Y/%m/', blank=True)
     is_published = models.BooleanField('опубликован', default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -273,12 +284,14 @@ class Contact(models.Model):
     TYPE_TELEGRAM = 'telegram'
     TYPE_WHATSAPP = 'whatsapp'
     TYPE_FACEBOOK = 'facebook'
+    TYPE_YOUTUBE = 'youtube'
     TYPE_CHOICES = [
         (TYPE_PHONE, 'Телефон'),
         (TYPE_INSTAGRAM, 'Instagram'),
         (TYPE_TELEGRAM, 'Telegram'),
         (TYPE_WHATSAPP, 'WhatsApp'),
         (TYPE_FACEBOOK, 'Facebook'),
+        (TYPE_YOUTUBE, 'YouTube'),
     ]
 
     site_settings = models.ForeignKey(SiteSettings, on_delete=models.CASCADE, related_name='contacts')

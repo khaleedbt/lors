@@ -114,8 +114,8 @@ class LeadSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = ['id', 'name', 'text', 'photo', 'created_at']
-        read_only_fields = ['created_at']
+        fields = ['id', 'name', 'text', 'rating', 'source', 'photo', 'created_at']
+        read_only_fields = ['source', 'created_at']
 
 
 class ContactSerializer(serializers.ModelSerializer):
