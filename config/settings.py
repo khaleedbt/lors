@@ -91,6 +91,7 @@ UNFOLD = {
         'show_all_applications': False,
         'navigation': [
             {
+                'title': 'Каталог',
                 'items': [
                     {
                         'title': 'Марки',
@@ -103,6 +104,51 @@ UNFOLD = {
                         'link': reverse_lazy('admin:lors_carmodel_changelist'),
                     },
                     {
+                        'title': 'Материалы',
+                        'icon': 'layers',
+                        'link': reverse_lazy('admin:lors_material_changelist'),
+                    },
+                    {
+                        'title': 'Цвета',
+                        'icon': 'palette',
+                        'link': reverse_lazy('admin:lors_color_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': 'Товары',
+                'items': [
+                    {
+                        'title': 'Категории товаров',
+                        'icon': 'category',
+                        'link': reverse_lazy('admin:lors_productcategory_changelist'),
+                    },
+                    {
+                        'title': 'Товары',
+                        'icon': 'inventory_2',
+                        'link': reverse_lazy('admin:lors_product_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': 'Контент',
+                'items': [
+                    {
+                        'title': 'Страницы',
+                        'icon': 'article',
+                        'link': reverse_lazy('admin:lors_page_changelist'),
+                    },
+                    {
+                        'title': 'Настройки сайта',
+                        'icon': 'settings',
+                        'link': reverse_lazy('admin:lors_sitesettings_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': 'Обращения',
+                'items': [
+                    {
                         'title': 'Заявки',
                         'icon': 'report',
                         'link': reverse_lazy('admin:lors_lead_changelist'),
@@ -112,11 +158,11 @@ UNFOLD = {
                         'icon': 'rate_review',
                         'link': reverse_lazy('admin:lors_review_changelist'),
                     },
-                    {
-                        'title': 'Настройки сайта',
-                        'icon': 'settings',
-                        'link': reverse_lazy('admin:lors_sitesettings_changelist'),
-                    },
+                ],
+            },
+            {
+                'title': 'Система',
+                'items': [
                     {
                         'title': 'Пользователи',
                         'icon': 'person',
