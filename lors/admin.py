@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from .models import Brand, CarModel, Complaint, ComplaintPhoto, Review, SiteSettings
+from .models import Brand, CarModel, Complaint, Contact, ComplaintPhoto, Review, SiteSettings
 
 
 class CarModelInline(TabularInline):
@@ -87,13 +87,19 @@ class ReviewAdmin(ModelAdmin):
         return format_html('<img src="{}" style="max-height: 120px;">', obj.photo.url)
 
 
+class ContactInline(TabularInline):
+    model = Contact
+    extra = 0
+    fields = ['contact_type', 'label', 'value', 'order']
+
+
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(ModelAdmin):
     fieldsets = (
         ('Геолокация', {'fields': ('address', 'latitude', 'longitude')}),
         ('О компании', {'fields': ('about',)}),
-        ('Соцсети', {'fields': ('instagram_url', 'telegram_url', 'whatsapp_url')}),
     )
+    inlines = [ContactInline]
 
     def has_add_permission(self, request):
         return not SiteSettings.objects.exists()
