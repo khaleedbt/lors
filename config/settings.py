@@ -103,9 +103,9 @@ UNFOLD = {
                         'link': reverse_lazy('admin:lors_carmodel_changelist'),
                     },
                     {
-                        'title': 'Жалобы',
+                        'title': 'Заявки',
                         'icon': 'report',
-                        'link': reverse_lazy('admin:lors_complaint_changelist'),
+                        'link': reverse_lazy('admin:lors_lead_changelist'),
                     },
                     {
                         'title': 'Отзывы',

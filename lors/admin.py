@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Product,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, MatSetPrice, Page, Product,
     ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
@@ -107,8 +107,16 @@ class ProductAdmin(ModelAdmin):
     )
 
 
-class ComplaintPhotoInline(TabularInline):
-    model = ComplaintPhoto
+@admin.register(ProductVariant)
+class ProductVariantAdmin(ModelAdmin):
+    list_display = ['product', 'size', 'color', 'price', 'is_active']
+    list_filter = ['is_active', 'product__category']
+    search_fields = ['product__name', 'size']
+    autocomplete_fields = ['product', 'color']
+
+
+class LeadPhotoInline(TabularInline):
+    model = LeadPhoto
     extra = 0
     fields = ['image', 'preview']
     readonly_fields = ['preview']
@@ -120,18 +128,19 @@ class ComplaintPhotoInline(TabularInline):
         return format_html('<img src="{}" style="max-height: 120px;">', obj.image.url)
 
 
-@admin.register(Complaint)
-class ComplaintAdmin(ModelAdmin):
-    list_display = ['name', 'phone', 'car_model', 'status', 'created_at']
-    list_filter = ['status', 'car_model__brand']
+@admin.register(Lead)
+class LeadAdmin(ModelAdmin):
+    list_display = ['name', 'phone', 'lead_type', 'car_model', 'status', 'created_at']
+    list_filter = ['lead_type', 'status', 'car_model__brand']
     list_editable = ['status']
     search_fields = ['name', 'phone', 'text']
-    autocomplete_fields = ['car_model']
-    inlines = [ComplaintPhotoInline]
+    autocomplete_fields = ['car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'product_variant']
+    inlines = [LeadPhotoInline]
     readonly_fields = ['created_at']
     fieldsets = (
-        ('Заявитель', {'fields': ('name', 'phone')}),
-        ('Жалоба', {'fields': ('car_model', 'text', 'status')}),
+        ('Заявитель', {'fields': ('lead_type', 'name', 'phone', 'text', 'status')}),
+        ('Заказ коврика', {'fields': ('car_model', 'material', 'mat_color', 'border_color', 'heel_color')}),
+        ('Заказ товара', {'fields': ('product_variant',)}),
         ('Служебное', {'fields': ('created_at',)}),
     )
 

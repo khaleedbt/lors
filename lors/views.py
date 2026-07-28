@@ -7,12 +7,12 @@ from django.db.models import Prefetch
 
 from .filters import CarModelFilter
 from .models import (
-    Brand, CarModel, Color, Complaint, Material, Page, Product, ProductCategory, ProductVariant, Review,
+    Brand, CarModel, Color, Lead, Material, Page, Product, ProductCategory, ProductVariant, Review,
     SiteSettings,
 )
 from .search import smart_search_car_models
 from .serializers import (
-    BrandSerializer, CarModelSerializer, ColorSerializer, ComplaintSerializer, MaterialSerializer,
+    BrandSerializer, CarModelSerializer, ColorSerializer, LeadSerializer, MaterialSerializer,
     PageSerializer, ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer,
 )
 
@@ -50,16 +50,18 @@ class CarModelViewSet(viewsets.ReadOnlyModelViewSet):
         return smart_search_car_models(search)
 
 
-class ComplaintViewSet(
+class LeadViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet,
 ):
-    queryset = Complaint.objects.select_related('car_model__brand').prefetch_related('photos')
-    serializer_class = ComplaintSerializer
+    queryset = Lead.objects.select_related(
+        'car_model__brand', 'material', 'mat_color', 'border_color', 'heel_color', 'product_variant',
+    ).prefetch_related('photos')
+    serializer_class = LeadSerializer
     parser_classes = [MultiPartParser, FormParser]
-    filterset_fields = ['status', 'car_model']
+    filterset_fields = ['status', 'lead_type', 'car_model']
 
     def get_permissions(self):
         if self.action == 'create':

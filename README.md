@@ -92,11 +92,19 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
   нет, а в запросе распознаётся название марки (`?search=Subaru BRZ`, такой
   модели в каталоге нет) — откатывается на все модели этой марки, вместо
   пустого результата.
-- `POST /api/complaints/` — публично, без авторизации. `multipart/form-data`:
-  `car_model` (id, необязательно), `name`, `phone`, `text`,
-  `uploaded_photos` (несколько файлов под одним ключом).
-- `GET /api/complaints/` и `GET /api/complaints/<id>/` — только для персонала
-  (staff/`is_admin`), фильтры `?status=`/`?car_model=`.
+- `POST /api/leads/` — публично, без авторизации. Единая точка входа для
+  всех обращений с сайта — `lead_type`: `complaint` (жалоба), `mat_order`
+  (заказ коврика из конфигуратора), `product_order` (заказ товара).
+  `multipart/form-data`: `name`, `phone` — всегда; `text` — обязателен при
+  `complaint`; `car_model` + `material` (+ опционально `mat_color`/
+  `border_color`/`heel_color`) — обязательны при `mat_order`;
+  `product_variant` — обязателен при `product_order`; `uploaded_photos` —
+  необязательные файлы под одним ключом, для любого типа. Обязательность
+  по типу проверяется в `LeadSerializer.validate()` (модель `Lead`,
+  бывший `Complaint` — переименован и расширен в
+  `lors/migrations/0016_rename_complaint_to_lead.py`).
+- `GET /api/leads/` и `GET /api/leads/<id>/` — только для персонала
+  (staff/`is_admin`), фильтры `?status=`/`?lead_type=`/`?car_model=`.
 - `GET /api/settings/` — публично, без списка/id. Единая запись настроек
   сайта: адрес + координаты, «о компании», список `contacts` (телефоны,
   Instagram, Telegram, WhatsApp, Facebook — сколько угодно штук каждого
