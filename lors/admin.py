@@ -147,13 +147,13 @@ class LeadAdmin(ModelAdmin):
 
 @admin.register(Review)
 class ReviewAdmin(ModelAdmin):
-    list_display = ['name', 'is_published', 'created_at', 'preview']
-    list_filter = ['is_published']
+    list_display = ['name', 'rating', 'source', 'is_published', 'created_at', 'preview']
+    list_filter = ['is_published', 'source', 'rating']
     list_editable = ['is_published']
     search_fields = ['name', 'text']
     readonly_fields = ['preview', 'created_at']
     fieldsets = (
-        (None, {'fields': ('name', 'text')}),
+        (None, {'fields': ('name', 'text', 'rating', 'source')}),
         ('Фото', {'fields': ('photo', 'preview')}),
         ('Публикация', {'fields': ('is_published', 'created_at')}),
     )
