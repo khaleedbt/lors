@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
-    Brand, CarModel, Color, Complaint, Contact, ComplaintPhoto, Material, MatSetPrice, Page, Product,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, MatSetPrice, Page, Product,
     ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
@@ -69,9 +69,9 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'car_model_count']
 
 
-class ComplaintPhotoSerializer(serializers.ModelSerializer):
+class LeadPhotoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = ComplaintPhoto
+        model = LeadPhoto
         fields = ['id', 'image']
 
 
@@ -79,25 +79,36 @@ class ImageListField(serializers.ListField):
     child = serializers.ImageField()
 
 
-class ComplaintSerializer(serializers.ModelSerializer):
-    photos = ComplaintPhotoSerializer(many=True, read_only=True)
+class LeadSerializer(serializers.ModelSerializer):
+    photos = LeadPhotoSerializer(many=True, read_only=True)
     uploaded_photos = ImageListField(write_only=True, required=False)
 
     class Meta:
-        model = Complaint
+        model = Lead
         fields = [
-            'id', 'car_model', 'name', 'phone', 'text', 'status',
-            'created_at', 'photos', 'uploaded_photos',
+            'id', 'lead_type', 'name', 'phone', 'text', 'status', 'created_at',
+            'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'product_variant',
+            'photos', 'uploaded_photos',
         ]
         read_only_fields = ['status', 'created_at']
 
+    def validate(self, attrs):
+        lead_type = attrs.get('lead_type', Lead.TYPE_COMPLAINT)
+        if lead_type == Lead.TYPE_COMPLAINT and not attrs.get('text'):
+            raise serializers.ValidationError({'text': 'Обязательно для жалобы.'})
+        if lead_type == Lead.TYPE_MAT_ORDER and not (attrs.get('car_model') and attrs.get('material')):
+            raise serializers.ValidationError({'car_model': 'Модель авто и материал обязательны для заказа коврика.'})
+        if lead_type == Lead.TYPE_PRODUCT_ORDER and not attrs.get('product_variant'):
+            raise serializers.ValidationError({'product_variant': 'Обязателен для заказа товара.'})
+        return attrs
+
     def create(self, validated_data):
         photos = validated_data.pop('uploaded_photos', [])
-        complaint = Complaint.objects.create(**validated_data)
-        ComplaintPhoto.objects.bulk_create(
-            ComplaintPhoto(complaint=complaint, image=image) for image in photos
+        lead = Lead.objects.create(**validated_data)
+        LeadPhoto.objects.bulk_create(
+            LeadPhoto(lead=lead, image=image) for image in photos
         )
-        return complaint
+        return lead
 
 
 class ReviewSerializer(serializers.ModelSerializer):

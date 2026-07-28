@@ -162,7 +162,16 @@ class ProductVariant(models.Model):
         return ' — '.join(p for p in parts if p)
 
 
-class Complaint(models.Model):
+class Lead(models.Model):
+    TYPE_COMPLAINT = 'complaint'
+    TYPE_MAT_ORDER = 'mat_order'
+    TYPE_PRODUCT_ORDER = 'product_order'
+    TYPE_CHOICES = [
+        (TYPE_COMPLAINT, 'жалоба'),
+        (TYPE_MAT_ORDER, 'заказ коврика'),
+        (TYPE_PRODUCT_ORDER, 'заказ товара'),
+    ]
+
     STATUS_NEW = 'new'
     STATUS_IN_PROGRESS = 'in_progress'
     STATUS_RESOLVED = 'resolved'
@@ -172,31 +181,51 @@ class Complaint(models.Model):
         (STATUS_RESOLVED, 'решена'),
     ]
 
-    car_model = models.ForeignKey(
-        CarModel, on_delete=models.SET_NULL, null=True, blank=True, related_name='complaints',
-    )
+    lead_type = models.CharField('тип заявки', max_length=20, choices=TYPE_CHOICES, default=TYPE_COMPLAINT)
     name = models.CharField('имя', max_length=150)
     phone = models.CharField('телефон', max_length=32)
-    text = models.TextField('текст жалобы')
+    text = models.TextField('текст', blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEW)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # заказ коврика (TYPE_MAT_ORDER)
+    car_model = models.ForeignKey(
+        CarModel, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
+    )
+    material = models.ForeignKey(
+        Material, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
+    )
+    mat_color = models.ForeignKey(
+        Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='mat_color_leads',
+    )
+    border_color = models.ForeignKey(
+        Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='border_color_leads',
+    )
+    heel_color = models.ForeignKey(
+        Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='heel_color_leads',
+    )
+
+    # заказ товара (TYPE_PRODUCT_ORDER)
+    product_variant = models.ForeignKey(
+        ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
+    )
+
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'жалоба'
-        verbose_name_plural = 'жалобы'
+        verbose_name = 'заявка'
+        verbose_name_plural = 'заявки'
 
     def __str__(self):
-        return f'{self.name} ({self.get_status_display()})'
+        return f'{self.get_lead_type_display()}: {self.name} ({self.get_status_display()})'
 
 
-class ComplaintPhoto(models.Model):
-    complaint = models.ForeignKey(Complaint, on_delete=models.CASCADE, related_name='photos')
-    image = models.ImageField(upload_to='complaints/%Y/%m/')
+class LeadPhoto(models.Model):
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name='photos')
+    image = models.ImageField(upload_to='leads/%Y/%m/')
 
     class Meta:
-        verbose_name = 'фото жалобы'
-        verbose_name_plural = 'фото жалобы'
+        verbose_name = 'фото заявки'
+        verbose_name_plural = 'фото заявки'
 
 
 class Review(models.Model):

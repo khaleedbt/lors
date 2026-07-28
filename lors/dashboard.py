@@ -1,4 +1,4 @@
-from .models import Brand, CarModel, Complaint, Review
+from .models import Brand, CarModel, Lead, Review
 
 
 def dashboard_callback(request, context):
@@ -7,8 +7,13 @@ def dashboard_callback(request, context):
         {'title': 'Моделей в каталоге', 'value': CarModel.objects.count(), 'icon': 'view_list'},
         {
             'title': 'Новые жалобы',
-            'value': Complaint.objects.filter(status=Complaint.STATUS_NEW).count(),
+            'value': Lead.objects.filter(lead_type=Lead.TYPE_COMPLAINT, status=Lead.STATUS_NEW).count(),
             'icon': 'report',
+        },
+        {
+            'title': 'Новые заказы',
+            'value': Lead.objects.exclude(lead_type=Lead.TYPE_COMPLAINT).filter(status=Lead.STATUS_NEW).count(),
+            'icon': 'shopping_cart',
         },
         {
             'title': 'Отзывы на модерации',
