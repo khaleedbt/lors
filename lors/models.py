@@ -285,6 +285,8 @@ class Contact(models.Model):
     TYPE_WHATSAPP = 'whatsapp'
     TYPE_FACEBOOK = 'facebook'
     TYPE_YOUTUBE = 'youtube'
+    TYPE_TIKTOK = 'tiktok'
+    TYPE_TWITTER = 'twitter'
     TYPE_CHOICES = [
         (TYPE_PHONE, 'Телефон'),
         (TYPE_INSTAGRAM, 'Instagram'),
@@ -292,6 +294,8 @@ class Contact(models.Model):
         (TYPE_WHATSAPP, 'WhatsApp'),
         (TYPE_FACEBOOK, 'Facebook'),
         (TYPE_YOUTUBE, 'YouTube'),
+        (TYPE_TIKTOK, 'TikTok'),
+        (TYPE_TWITTER, 'Twitter'),
     ]
 
     site_settings = models.ForeignKey(SiteSettings, on_delete=models.CASCADE, related_name='contacts')
