@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, MatSetPrice, Page, Product,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, Page, PriceCategory, Product,
     ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
@@ -26,27 +26,31 @@ class BrandAdmin(ModelAdmin):
         return obj.car_models.count()
 
 
-class MatSetPriceInline(TabularInline):
-    model = MatSetPrice
-    extra = 0
-    fields = ['material', 'price']
-    autocomplete_fields = ['material']
-
-
 @admin.register(CarModel)
 class CarModelAdmin(ModelAdmin):
-    list_display = ['name', 'brand', 'template_code', 'car_type']
-    list_filter = ['brand']
+    list_display = ['name', 'brand', 'template_code', 'car_type', 'price_category']
+    list_filter = ['brand', 'price_category']
     search_fields = ['name', 'template_code']
-    autocomplete_fields = ['brand']
-    inlines = [MatSetPriceInline]
+    autocomplete_fields = ['brand', 'price_category']
     fieldsets = (
         (None, {'fields': ('brand', 'name')}),
         ('Шаблон и характеристики', {
             'fields': ('template_code', 'car_type', 'driver_cut', 'package', 'second_row_package'),
         }),
+        ('Цена', {'fields': ('price_category',)}),
         ('Дополнительно', {'fields': ('notes', 'video_url', 'sheet_row')}),
     )
+
+
+@admin.register(PriceCategory)
+class PriceCategoryAdmin(ModelAdmin):
+    list_display = ['name', 'price', 'order', 'car_model_count']
+    list_editable = ['price', 'order']
+    search_fields = ['name']
+
+    @admin.display(description='моделей')
+    def car_model_count(self, obj):
+        return obj.car_models.count()
 
 
 @admin.register(Material)

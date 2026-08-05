@@ -53,6 +53,9 @@ class CarModel(models.Model):
     second_row_package = models.CharField(
         'пакет 2-й ряд', max_length=255, choices=SECOND_ROW_PACKAGE_CHOICES, blank=True,
     )
+    price_category = models.ForeignKey(
+        'PriceCategory', on_delete=models.SET_NULL, null=True, blank=True, related_name='car_models',
+    )
     notes = models.TextField('примечания', blank=True)
     video_url = models.URLField('ссылка на видео', max_length=500, blank=True)
     sheet_row = models.PositiveIntegerField('строка в исходной таблице', unique=True, null=True, blank=True)
@@ -64,6 +67,20 @@ class CarModel(models.Model):
 
     def __str__(self):
         return f'{self.brand.name} {self.name}'
+
+
+class PriceCategory(models.Model):
+    name = models.CharField('название', max_length=150, unique=True)
+    price = models.DecimalField('цена', max_digits=10, decimal_places=2)
+    order = models.PositiveIntegerField('порядок', default=0)
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = 'ценовая категория'
+        verbose_name_plural = 'ценовые категории'
+
+    def __str__(self):
+        return f'{self.name} — {self.price}'
 
 
 class Material(models.Model):
@@ -93,21 +110,6 @@ class Color(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class MatSetPrice(models.Model):
-    car_model = models.ForeignKey(CarModel, on_delete=models.CASCADE, related_name='mat_set_prices')
-    material = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='prices')
-    price = models.DecimalField('цена', max_digits=10, decimal_places=2)
-
-    class Meta:
-        ordering = ['material__order']
-        unique_together = [('car_model', 'material')]
-        verbose_name = 'цена комплекта'
-        verbose_name_plural = 'цены комплектов'
-
-    def __str__(self):
-        return f'{self.car_model} × {self.material}: {self.price}'
 
 
 class ProductCategory(models.Model):

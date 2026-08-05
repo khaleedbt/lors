@@ -104,6 +104,11 @@ UNFOLD = {
                         'link': reverse_lazy('admin:lors_carmodel_changelist'),
                     },
                     {
+                        'title': 'Ценовые категории',
+                        'icon': 'sell',
+                        'link': reverse_lazy('admin:lors_pricecategory_changelist'),
+                    },
+                    {
                         'title': 'Материалы',
                         'icon': 'layers',
                         'link': reverse_lazy('admin:lors_material_changelist'),

@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     BrandViewSet, CarModelViewSet, ColorViewSet, LeadViewSet, MaterialViewSet, PageViewSet,
-    ProductCategoryViewSet, ProductViewSet, ReviewViewSet, SiteSettingsView,
+    PriceCategoryViewSet, ProductCategoryViewSet, ProductViewSet, ReviewViewSet, SiteSettingsView,
 )
 
 router = DefaultRouter()
@@ -14,6 +14,7 @@ router.register('reviews', ReviewViewSet, basename='review')
 router.register('pages', PageViewSet, basename='page')
 router.register('materials', MaterialViewSet, basename='material')
 router.register('colors', ColorViewSet, basename='color')
+router.register('price-categories', PriceCategoryViewSet, basename='price-category')
 router.register('products', ProductViewSet, basename='product')
 router.register('product-categories', ProductCategoryViewSet, basename='product-category')
 
