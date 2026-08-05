@@ -1,8 +1,9 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import (
-    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, Page, PriceCategory, Product,
-    ProductCategory, ProductVariant, Review, SiteSettings,
+    Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
+    PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -22,6 +23,24 @@ class PriceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PriceCategory
         fields = ['id', 'name', 'price']
+
+
+class LogoOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LogoOption
+        fields = ['id', 'name', 'price']
+
+
+class DeseOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeseOption
+        fields = ['id', 'name', 'price']
+
+
+class PricingSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PricingSettings
+        fields = ['package_price']
 
 
 class CarModelSerializer(serializers.ModelSerializer):
@@ -80,13 +99,14 @@ class ImageListField(serializers.ListField):
 class LeadSerializer(serializers.ModelSerializer):
     photos = LeadPhotoSerializer(many=True, read_only=True)
     uploaded_photos = ImageListField(write_only=True, required=False)
+    total_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Lead
         fields = [
             'id', 'lead_type', 'name', 'phone', 'text', 'status', 'created_at',
-            'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'product_variant',
-            'photos', 'uploaded_photos',
+            'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'has_package', 'logo', 'dese',
+            'product_variant', 'total_price', 'photos', 'uploaded_photos',
         ]
         read_only_fields = ['status', 'created_at']
 
@@ -99,6 +119,23 @@ class LeadSerializer(serializers.ModelSerializer):
         if lead_type == Lead.TYPE_PRODUCT_ORDER and not attrs.get('product_variant'):
             raise serializers.ValidationError({'product_variant': 'Обязателен для заказа товара.'})
         return attrs
+
+    @extend_schema_field(serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True))
+    def get_total_price(self, obj):
+        if obj.lead_type == Lead.TYPE_MAT_ORDER:
+            if not obj.car_model or not obj.car_model.price_category:
+                return None
+            total = obj.car_model.price_category.price
+            if obj.has_package:
+                total += PricingSettings.load().package_price
+            if obj.logo:
+                total += obj.logo.price
+            if obj.dese:
+                total += obj.dese.price
+            return total
+        if obj.lead_type == Lead.TYPE_PRODUCT_ORDER and obj.product_variant:
+            return obj.product_variant.price
+        return None
 
     def create(self, validated_data):
         photos = validated_data.pop('uploaded_photos', [])

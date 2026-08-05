@@ -96,15 +96,20 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
   всех обращений с сайта — `lead_type`: `complaint` (жалоба), `mat_order`
   (заказ коврика из конфигуратора), `product_order` (заказ товара).
   `multipart/form-data`: `name`, `phone` — всегда; `text` — обязателен при
-  `complaint`; `car_model` — обязателен при `mat_order` (цена берётся из
-  `car_model.price_category`, см. ниже; `material`/`mat_color`/
-  `border_color`/`heel_color` — необязательные описательные пожелания,
-  на цену не влияют); `product_variant` — обязателен при `product_order`;
+  `complaint`; `car_model` — обязателен при `mat_order` (`material`/
+  `mat_color`/`border_color`/`heel_color` — необязательные описательные
+  пожелания, на цену не влияют; `has_package`/`logo`/`dese` — необязательные
+  наценки, см. ниже); `product_variant` — обязателен при `product_order`;
   `uploaded_photos` —
   необязательные файлы под одним ключом, для любого типа. Обязательность
   по типу проверяется в `LeadSerializer.validate()` (модель `Lead`,
   бывший `Complaint` — переименован и расширен в
-  `lors/migrations/0016_rename_complaint_to_lead.py`).
+  `lors/migrations/0016_rename_complaint_to_lead.py`). Ответ содержит
+  `total_price` — рассчитанную итоговую цену (для `mat_order`: цена
+  `car_model.price_category` + `pricing-settings.package_price` при
+  `has_package=true` + цена выбранных `logo`/`dese`; для `product_order`:
+  цена `product_variant`; `null`, если модель авто ещё не привязана к
+  категории цены).
 - `GET /api/leads/` и `GET /api/leads/<id>/` — только для персонала
   (staff/`is_admin`), фильтры `?status=`/`?lead_type=`/`?car_model=`.
 - `GET /api/settings/` — публично, без списка/id. Единая запись настроек
@@ -137,9 +142,16 @@ DRF-эндпоинты с поиском (`?search=`) и фильтрами:
   с пакетом и без, см. `lors/migrations/0020_seed_price_categories.py`).
   `GET /api/car-models/<id>/` отдаёт `price_category` — категорию и
   готовую цену для этой модели (привязывается вручную в `/admin/`,
-  поле `CarModel.price_category`; если не привязана — `null`,
-  конфигуратор на фронте должен в этом случае предлагать написать
-  менеджеру, а не показывать цену).
+  поле `CarModel.price_category`; если не привязана — `null`).
+- `GET /api/logo-options/`, `GET /api/dese-options/` — публично, только
+  чтение, только активные записи. Наценки из прайса: логотип (обычный
+  3$ / королевский 6$) и дэсе (тип 1 — 15$ / тип 2 — 10$) — выбор клиента
+  при заказе, суммируются с базовой ценой категории (см. `total_price`
+  в `/api/leads/` выше). `GET /api/pricing-settings/` — публично, без
+  списка/id, синглтон-запись с `package_price` (35$ — наценка за
+  добавление пакета к заказу без пакета, модель `PricingSettings`,
+  редактируется только в `/admin/`), см.
+  `lors/migrations/0022_seed_pricing_options.py`.
 - `GET /api/product-categories/` и `GET /api/products/` (фильтр
   `?category=<id>`) — публично, только чтение, только активные товары и
   варианты. Доп. товары (по образцу турецкой витрины сумок в багажник):

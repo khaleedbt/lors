@@ -118,6 +118,21 @@ UNFOLD = {
                         'icon': 'palette',
                         'link': reverse_lazy('admin:lors_color_changelist'),
                     },
+                    {
+                        'title': 'Варианты логотипа',
+                        'icon': 'star',
+                        'link': reverse_lazy('admin:lors_logooption_changelist'),
+                    },
+                    {
+                        'title': 'Варианты дэсе',
+                        'icon': 'directions_car',
+                        'link': reverse_lazy('admin:lors_deseoption_changelist'),
+                    },
+                    {
+                        'title': 'Настройки цен',
+                        'icon': 'payments',
+                        'link': reverse_lazy('admin:lors_pricingsettings_changelist'),
+                    },
                 ],
             },
             {
