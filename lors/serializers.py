@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import (
-    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, MatSetPrice, Page, Product,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, Material, Page, PriceCategory, Product,
     ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
@@ -18,23 +18,21 @@ class ColorSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'hex_code']
 
 
-class MatSetPriceSerializer(serializers.ModelSerializer):
-    material = MaterialSerializer(read_only=True)
-
+class PriceCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = MatSetPrice
-        fields = ['material', 'price']
+        model = PriceCategory
+        fields = ['id', 'name', 'price']
 
 
 class CarModelSerializer(serializers.ModelSerializer):
     brand = serializers.SlugRelatedField(slug_field='name', read_only=True)
-    mat_prices = MatSetPriceSerializer(source='mat_set_prices', many=True, read_only=True)
+    price_category = PriceCategorySerializer(read_only=True)
 
     class Meta:
         model = CarModel
         fields = [
             'id', 'brand', 'name', 'template_code', 'car_type', 'driver_cut',
-            'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'mat_prices',
+            'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'price_category',
         ]
 
 
@@ -96,8 +94,8 @@ class LeadSerializer(serializers.ModelSerializer):
         lead_type = attrs.get('lead_type', Lead.TYPE_COMPLAINT)
         if lead_type == Lead.TYPE_COMPLAINT and not attrs.get('text'):
             raise serializers.ValidationError({'text': 'Обязательно для жалобы.'})
-        if lead_type == Lead.TYPE_MAT_ORDER and not (attrs.get('car_model') and attrs.get('material')):
-            raise serializers.ValidationError({'car_model': 'Модель авто и материал обязательны для заказа коврика.'})
+        if lead_type == Lead.TYPE_MAT_ORDER and not attrs.get('car_model'):
+            raise serializers.ValidationError({'car_model': 'Обязателен для заказа коврика.'})
         if lead_type == Lead.TYPE_PRODUCT_ORDER and not attrs.get('product_variant'):
             raise serializers.ValidationError({'product_variant': 'Обязателен для заказа товара.'})
         return attrs

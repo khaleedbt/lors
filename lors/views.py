@@ -7,13 +7,14 @@ from django.db.models import Prefetch
 
 from .filters import CarModelFilter
 from .models import (
-    Brand, CarModel, Color, Lead, Material, Page, Product, ProductCategory, ProductVariant, Review,
-    SiteSettings,
+    Brand, CarModel, Color, Lead, Material, Page, PriceCategory, Product, ProductCategory, ProductVariant,
+    Review, SiteSettings,
 )
 from .search import smart_search_car_models
 from .serializers import (
     BrandSerializer, CarModelSerializer, ColorSerializer, LeadSerializer, MaterialSerializer,
-    PageSerializer, ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer,
+    PageSerializer, PriceCategorySerializer, ProductCategorySerializer, ProductSerializer, ReviewSerializer,
+    SiteSettingsSerializer,
 )
 
 
@@ -39,7 +40,7 @@ class BrandViewSet(viewsets.ReadOnlyModelViewSet):
     ),
 )
 class CarModelViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = CarModel.objects.select_related('brand').prefetch_related('mat_set_prices__material').all()
+    queryset = CarModel.objects.select_related('brand', 'price_category').all()
     serializer_class = CarModelSerializer
     filterset_class = CarModelFilter
 
@@ -84,6 +85,12 @@ class ReviewViewSet(
         if self.action == 'create':
             return qs
         return qs.filter(is_published=True)
+
+
+class PriceCategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PriceCategory.objects.all()
+    serializer_class = PriceCategorySerializer
+    permission_classes = [permissions.AllowAny]
 
 
 class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
