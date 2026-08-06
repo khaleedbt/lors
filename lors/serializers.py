@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from . import meta_capi
 from .models import (
     Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
     PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
@@ -143,6 +144,7 @@ class LeadSerializer(serializers.ModelSerializer):
         LeadPhoto.objects.bulk_create(
             LeadPhoto(lead=lead, image=image) for image in photos
         )
+        meta_capi.send_lead_event(lead, request=self.context.get('request'), total_price=self.get_total_price(lead))
         return lead
 
 

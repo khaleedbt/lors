@@ -66,6 +66,12 @@ INSTALLED_APPS = [
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
+# Meta Conversions API (см. lors/meta_capi.py). Пока Pixel ID/токен не заведены в
+# Business Manager — META_PIXEL_ID пуст, и отправка событий тихо no-op'ится.
+META_PIXEL_ID = config('META_PIXEL_ID', default='')
+META_ACCESS_TOKEN = config('META_ACCESS_TOKEN', default='')
+META_TEST_EVENT_CODE = config('META_TEST_EVENT_CODE', default='')
+
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
