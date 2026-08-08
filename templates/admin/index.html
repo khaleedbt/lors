@@ -11,5 +11,17 @@
     {% endfor %}
 </div>
 
-{% include "unfold/helpers/history.html" %}
+<div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+    {% component "unfold/components/card.html" with title="Заявки за 14 дней" %}
+        {% component "unfold/components/chart/line.html" with data=leads_trend_chart height=220 %}{% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with title="Заявки по типу за 30 дней" %}
+        {% component "unfold/components/chart/bar.html" with data=leads_by_type_chart height=220 %}{% endcomponent %}
+    {% endcomponent %}
+</div>
+
+{% component "unfold/components/card.html" with title="Последние заявки" %}
+    {% component "unfold/components/table.html" with table=recent_leads_table card_included=1 %}{% endcomponent %}
+{% endcomponent %}
 {% endblock %}

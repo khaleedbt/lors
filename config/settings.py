@@ -14,6 +14,7 @@ from pathlib import Path
 
 from decouple import config
 from django.urls import reverse_lazy
+from django.utils.text import format_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -175,9 +176,23 @@ UNFOLD = {
                 'title': 'Обращения',
                 'items': [
                     {
-                        'title': 'Заявки',
-                        'icon': 'report',
+                        'title': 'Все заявки',
+                        'icon': 'list_alt',
                         'link': reverse_lazy('admin:lors_lead_changelist'),
+                    },
+                    {
+                        'title': 'Жалобы',
+                        'icon': 'report',
+                        'link': format_lazy(
+                            '{}?lead_type__exact=complaint', reverse_lazy('admin:lors_lead_changelist'),
+                        ),
+                    },
+                    {
+                        'title': 'Заказы',
+                        'icon': 'shopping_cart',
+                        'link': format_lazy(
+                            '{}?lead_type__in=mat_order,product_order', reverse_lazy('admin:lors_lead_changelist'),
+                        ),
                     },
                     {
                         'title': 'Отзывы',
