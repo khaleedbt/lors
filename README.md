@@ -50,7 +50,9 @@ cp .env.example .env
 | `DB_HOST`       | хост БД (`localhost`)                |
 | `DB_PORT`       | порт БД (`5432`)                     |
 | `TELEGRAM_BOT_TOKEN` | токен Telegram-бота (от @BotFather) |
-| `ANTHROPIC_API_KEY`  | ключ Claude API (для ИИ-бота)       |
+| `ANTHROPIC_API_KEY`  | ключ Claude API (нужен бэкенду — `/api/assistant/message/`) |
+| `ASSISTANT_API_KEY`  | секрет для вызова `/api/assistant/message/` (канал-адаптер → бэкенд); пустым быть не должно — см. `assistant/permissions.py` |
+| `BACKEND_BASE_URL`   | адрес бэкенда для бота (по умолчанию `http://127.0.0.1:8000`) |
 | `META_PIXEL_ID` / `META_ACCESS_TOKEN` | Meta Conversions API (см. `lors/meta_capi.py`); пусты по умолчанию — интеграция no-op, пока не заведён Pixel в Meta Business Manager |
 | `META_TEST_EVENT_CODE` | код тестового прогона событий в Meta Events Manager (необязательно) |
 
@@ -236,26 +238,57 @@ Meta Events Manager → выбрать Pixel → Settings → Conversions API �
 — опционально, для проверки в разделе «Test Events» Events Manager перед
 боевым запуском.
 
-## Telegram-бот с ИИ-поиском
+## Ассистент — API + Telegram-бот с ИИ-поиском
+
+Ответ клиенту генерируется целиком на бэкенде и отдаётся по HTTP — канал
+(бот) сам ничего не генерирует, только пересылает сообщение и относит ответ
+дальше:
+
+- `POST /api/assistant/message/` — `{channel, external_user_id, text}` →
+  `{reply}`. Закрыт заголовком `X-Assistant-Key` (должен совпадать с
+  `ASSISTANT_API_KEY` из `.env`) — это внутренний сервисный вызов, не
+  публичный эндпоинт сайта; без ключа доступ закрыт для всех
+  (`assistant/permissions.py`, fail closed — в отличие от
+  `TELEGRAM_BOT_TOKEN`/`ANTHROPIC_API_KEY`, где пустое значение просто
+  выключает функцию, здесь пустое значение означает «никому нельзя»).
+- `assistant/management/commands/runbot.py` — Telegram-бот (aiogram, long
+  polling) — теперь тонкий HTTP-клиент этого эндпоинта (`httpx`), не прямой
+  Python-вызов. Так же будет подключаться и любой будущий канал (Instagram,
+  WhatsApp, веб-виджет) — своим адаптером поверх того же `/api/assistant/message/`,
+  независимо от языка/процесса, в котором этот адаптер написан.
 
 ```bash
 python manage.py runbot
 ```
 
-Второй процесс рядом с `runserver` (общая БД через Django ORM, без HTTP-прыжка
-на собственный API). Нужны `TELEGRAM_BOT_TOKEN` (от [@BotFather](https://t.me/BotFather))
-и `ANTHROPIC_API_KEY` в `.env`.
+Второй процесс рядом с `runserver` — при разработке через `run.sh` (см. ниже).
+Нужны `TELEGRAM_BOT_TOKEN` (от [@BotFather](https://t.me/BotFather)),
+`ASSISTANT_API_KEY` и `BACKEND_BASE_URL` (адрес, на котором поднят
+Django — по умолчанию `http://127.0.0.1:8000`) в `.env`; `ANTHROPIC_API_KEY`
+нужен самому бэкенду (для `/api/assistant/message/`), не боту.
 
-Клиент пишет боту на любом языке (упор на сирийский диалект арабского) — бот
-вызывает у Claude инструмент `search_car_models`, который под капотом дёргает
-тот же `smart_search_car_models` (`lors/search.py`), что и
-`/api/car-models/?search=`. Поиск идёт по всему каталогу, не только по
-марке/модели: код шаблона, тип авто, тип шофёра, пакет, примечания
-(`SEARCHABLE_FIELDS` в `lors/search.py`) — например, можно спросить прямо про
-код шаблона («есть код ب-11?»), и если ничего не нашлось, бот так и скажет,
-а не откажется искать. По найденной записи бот описывает, что есть для этой
-модели, и предлагает контакты для заказа (`SiteSettings` — адрес,
-Instagram/Telegram/WhatsApp).
+Клиент пишет боту на любом языке (упор на сирийский диалект арабского) —
+у Claude есть три инструмента (`assistant/claude_client.py`):
+
+- `search_car_models` — дёргает тот же `smart_search_car_models`
+  (`lors/search.py`), что и `/api/car-models/?search=`. Поиск идёт по
+  всему каталогу, не только по марке/модели: код шаблона, тип авто, тип
+  шофёра, пакет, примечания (`SEARCHABLE_FIELDS` в `lors/search.py`) —
+  например, можно спросить прямо про код шаблона («есть код ب-11?»), и
+  если ничего не нашлось, бот так и скажет, а не откажется искать.
+  Результат уже включает базовую цену (`CarModel.price_category`), если
+  она задана.
+- `calculate_mat_price` — считает итоговую цену коврика с опциями (пакет/
+  логотип/дэсе) той же формулой, что и `total_price` в `LeadSerializer`
+  (`lors/serializers.py`) — цена категории + выбранные наценки.
+- `search_products` — доп. товары (`Product`/`ProductVariant`, не
+  коврики). Названия товаров/категорий в базе на арабском — инструмент
+  ищет точную подстроку без перевода, поэтому в его описании прямо
+  указано Claude самому переводить запрос клиента на арабский перед
+  вызовом, если клиент написал на другом языке.
+
+По найденной записи бот описывает, что есть для этой модели, и предлагает
+контакты для заказа (`SiteSettings` — адрес, Instagram/Telegram/WhatsApp).
 
 Бот помнит контекст переписки: перед каждым ответом `handle_message`
 (`assistant/brain.py`) подтягивает последние `HISTORY_LIMIT` сообщений этого
@@ -263,15 +296,18 @@ Instagram/Telegram/WhatsApp).
 диалога — так «2013 год» после «BMW X5» понимается как уточнение к прошлому
 вопросу, а не новый пустой запрос.
 
-Устройство — «мозг» отдельно от канала, чтобы потом так же подключить
-Instagram:
+Устройство:
 
+- `assistant/views.py` — `AssistantMessageView`, HTTP-контракт
+  (`POST /api/assistant/message/`), канал-агностичный
 - `assistant/brain.py` — `handle_message(text, channel, external_user_id)`,
-  канал-агностичная точка входа
+  вся логика ответа (история переписки + вызов Claude + лог), вызывается
+  только из `AssistantMessageView`, напрямую больше нигде не импортируется
 - `assistant/claude_client.py` — вызов Claude (`claude-opus-4-8`, ручной
   tool-use цикл, без beta tool_runner)
-- `assistant/management/commands/runbot.py` — aiogram-адаптер поверх
-  `handle_message`; будущий Instagram-адаптер будет звать ту же функцию
+- `assistant/management/commands/runbot.py` — aiogram-адаптер, HTTP-клиент
+  `/api/assistant/message/`; будущий Instagram/WhatsApp-адаптер будет
+  дёргать тот же эндпоинт
 - `assistant.BotMessage` — лог всех сообщений (in/out) для просмотра в
   `/admin/assistant/botmessage/`, только для чтения
 
