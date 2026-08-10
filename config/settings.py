@@ -67,6 +67,13 @@ INSTALLED_APPS = [
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
 
+# Внутренний API ассистента (см. assistant/views.py) — канал-адаптеры (боты)
+# ходят сюда по HTTP вместо прямого Python-вызова. ASSISTANT_API_KEY пустым
+# быть не должно на проде: без него эндпоинт закрыт для всех (см.
+# assistant/permissions.py), а не открыт.
+ASSISTANT_API_KEY = config('ASSISTANT_API_KEY', default='')
+BACKEND_BASE_URL = config('BACKEND_BASE_URL', default='http://127.0.0.1:8000')
+
 # Meta Conversions API (см. lors/meta_capi.py). Пока Pixel ID/токен не заведены в
 # Business Manager — META_PIXEL_ID пуст, и отправка событий тихо no-op'ится.
 META_PIXEL_ID = config('META_PIXEL_ID', default='')
