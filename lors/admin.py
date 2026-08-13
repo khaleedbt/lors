@@ -3,8 +3,8 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
-    PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
+    Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -28,9 +28,9 @@ class BrandAdmin(ModelAdmin):
 
 @admin.register(CarModel)
 class CarModelAdmin(ModelAdmin):
-    list_display = ['name', 'brand', 'template_code', 'car_type', 'price_category']
-    list_filter = ['brand', 'price_category']
-    search_fields = ['name', 'template_code']
+    list_display = ['name', 'brand', 'template_code', 'car_type', 'body_variant', 'year_from', 'year_to', 'price_category']
+    list_filter = ['brand', 'car_type', 'price_category']
+    search_fields = ['name', 'template_code', 'base_model']
     autocomplete_fields = ['brand', 'price_category']
     fieldsets = (
         (None, {'fields': ('brand', 'name')}),
@@ -38,6 +38,9 @@ class CarModelAdmin(ModelAdmin):
             'fields': ('template_code', 'car_type', 'driver_cut', 'package', 'second_row_package'),
         }),
         ('Цена', {'fields': ('price_category',)}),
+        ('Каскад Марка→Модель→Кузов→Год (авторазбор из названия)', {
+            'fields': ('base_model', 'body_variant', 'year_from', 'year_to'),
+        }),
         ('Дополнительно', {'fields': ('notes', 'video_url', 'sheet_row')}),
     )
 
@@ -58,24 +61,6 @@ class LogoOptionAdmin(ModelAdmin):
     list_display = ['name', 'price', 'order', 'is_active']
     list_editable = ['price', 'order', 'is_active']
     search_fields = ['name']
-
-
-@admin.register(DeseOption)
-class DeseOptionAdmin(ModelAdmin):
-    list_display = ['name', 'price', 'order', 'is_active']
-    list_editable = ['price', 'order', 'is_active']
-    search_fields = ['name']
-
-
-@admin.register(PricingSettings)
-class PricingSettingsAdmin(ModelAdmin):
-    list_display = ['package_price']
-
-    def has_add_permission(self, request):
-        return not PricingSettings.objects.exists()
-
-    def has_delete_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(Material)
@@ -164,7 +149,7 @@ class LeadAdmin(ModelAdmin):
     list_editable = ['status']
     search_fields = ['name', 'phone', 'text']
     autocomplete_fields = [
-        'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo', 'dese', 'product_variant',
+        'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo', 'product_variant',
     ]
     inlines = [LeadPhotoInline]
     readonly_fields = ['created_at']
@@ -172,8 +157,7 @@ class LeadAdmin(ModelAdmin):
         ('Заявитель', {'fields': ('lead_type', 'name', 'phone', 'text', 'status')}),
         ('Заказ коврика', {
             'fields': (
-                'car_model', 'material', 'mat_color', 'border_color', 'heel_color',
-                'has_package', 'logo', 'dese',
+                'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo',
             ),
         }),
         ('Заказ товара', {'fields': ('product_variant',)}),
