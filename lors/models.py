@@ -59,6 +59,10 @@ class CarModel(models.Model):
     notes = models.TextField('примечания', blank=True)
     video_url = models.URLField('ссылка на видео', max_length=500, blank=True)
     sheet_row = models.PositiveIntegerField('строка в исходной таблице', unique=True, null=True, blank=True)
+    base_model = models.CharField('базовая модель', max_length=255, blank=True)
+    body_variant = models.CharField('вариант кузова (из названия)', max_length=100, blank=True)
+    year_from = models.PositiveSmallIntegerField('год от', null=True, blank=True)
+    year_to = models.PositiveSmallIntegerField('год до', null=True, blank=True)
 
     class Meta:
         ordering = ['brand__name', 'name']
@@ -96,43 +100,6 @@ class LogoOption(models.Model):
 
     def __str__(self):
         return f'{self.name} — {self.price}'
-
-
-class DeseOption(models.Model):
-    """Дэсе (защитная накладка под педаль) — наценка, которую клиент выбирает
-    при заказе, отдельно от каталожного CarModel.driver_cut."""
-    name = models.CharField('название', max_length=100)
-    price = models.DecimalField('цена', max_digits=10, decimal_places=2)
-    order = models.PositiveIntegerField('порядок', default=0)
-    is_active = models.BooleanField('активен', default=True)
-
-    class Meta:
-        ordering = ['order', 'id']
-        verbose_name = 'вариант дэсе'
-        verbose_name_plural = 'варианты дэсе'
-
-    def __str__(self):
-        return f'{self.name} — {self.price}'
-
-
-class PricingSettings(models.Model):
-    package_price = models.DecimalField('цена добавления пакета', max_digits=10, decimal_places=2, default=35)
-
-    class Meta:
-        verbose_name = 'настройки цен'
-        verbose_name_plural = 'настройки цен'
-
-    def __str__(self):
-        return 'Настройки цен'
-
-    def save(self, *args, **kwargs):
-        self.pk = 1
-        super().save(*args, **kwargs)
-
-    @classmethod
-    def load(cls):
-        obj, _ = cls.objects.get_or_create(pk=1)
-        return obj
 
 
 class Material(models.Model):
@@ -258,12 +225,8 @@ class Lead(models.Model):
     heel_color = models.ForeignKey(
         Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='heel_color_leads',
     )
-    has_package = models.BooleanField('добавить пакет', default=False)
     logo = models.ForeignKey(
         LogoOption, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
-    )
-    dese = models.ForeignKey(
-        DeseOption, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
     )
 
     # заказ товара (TYPE_PRODUCT_ORDER)

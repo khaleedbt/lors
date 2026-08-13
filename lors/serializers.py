@@ -3,8 +3,8 @@ from rest_framework import serializers
 
 from . import meta_capi
 from .models import (
-    Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
-    PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
+    Brand, CarModel, Color, Contact, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
+    Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -32,18 +32,6 @@ class LogoOptionSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'price']
 
 
-class DeseOptionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = DeseOption
-        fields = ['id', 'name', 'price']
-
-
-class PricingSettingsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PricingSettings
-        fields = ['package_price']
-
-
 class CarModelSerializer(serializers.ModelSerializer):
     brand = serializers.SlugRelatedField(slug_field='name', read_only=True)
     price_category = PriceCategorySerializer(read_only=True)
@@ -53,6 +41,7 @@ class CarModelSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'brand', 'name', 'template_code', 'car_type', 'driver_cut',
             'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'price_category',
+            'base_model', 'body_variant', 'year_from', 'year_to',
         ]
 
 
@@ -106,7 +95,7 @@ class LeadSerializer(serializers.ModelSerializer):
         model = Lead
         fields = [
             'id', 'lead_type', 'name', 'phone', 'text', 'status', 'created_at',
-            'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'has_package', 'logo', 'dese',
+            'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo',
             'product_variant', 'total_price', 'photos', 'uploaded_photos',
         ]
         read_only_fields = ['status', 'created_at']
@@ -127,12 +116,8 @@ class LeadSerializer(serializers.ModelSerializer):
             if not obj.car_model or not obj.car_model.price_category:
                 return None
             total = obj.car_model.price_category.price
-            if obj.has_package:
-                total += PricingSettings.load().package_price
             if obj.logo:
                 total += obj.logo.price
-            if obj.dese:
-                total += obj.dese.price
             return total
         if obj.lead_type == Lead.TYPE_PRODUCT_ORDER and obj.product_variant:
             return obj.product_variant.price
