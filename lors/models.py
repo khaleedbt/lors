@@ -120,7 +120,12 @@ class DeseOption(models.Model):
 
 
 class PricingSettings(models.Model):
-    package_price = models.DecimalField('цена добавления пакета', max_digits=10, decimal_places=2, default=35)
+    # Поле называется package_price по историческим причинам (Lead.has_package) — по сути
+    # это доплата за коврик в багажник. "Пакет" — неверный перевод бренда/термина "باكاج",
+    # который в оригинале означает багажник, а не общий "пакет опций" — отсюда и путаница
+    # в общении с клиентами (см. коммит с голосовыми сообщениями). Verbose_name ниже поэтому
+    # осознанно говорит "багажник", а не "пакет".
+    package_price = models.DecimalField('цена добавления багажника', max_digits=10, decimal_places=2, default=35)
 
     class Meta:
         verbose_name = 'настройки цен'
@@ -262,7 +267,7 @@ class Lead(models.Model):
     heel_color = models.ForeignKey(
         Color, on_delete=models.SET_NULL, null=True, blank=True, related_name='heel_color_leads',
     )
-    has_package = models.BooleanField('добавить пакет', default=False)
+    has_package = models.BooleanField('добавить багажник', default=False)
     logo = models.ForeignKey(
         LogoOption, on_delete=models.SET_NULL, null=True, blank=True, related_name='leads',
     )
