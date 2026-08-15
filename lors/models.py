@@ -90,6 +90,12 @@ class PriceCategory(models.Model):
 class LogoOption(models.Model):
     name = models.CharField('название', max_length=100)
     price = models.DecimalField('цена', max_digits=10, decimal_places=2)
+    # Шильдики физически разные по маркам (см. МойСклад: логотип "Toyota (logo
+    # maliki)" — это не то же изделие, что "BMW (logo maliki)"). null=True —
+    # универсальный вариант для марок, под которые своего шильдика ещё нет.
+    brand = models.ForeignKey(
+        Brand, on_delete=models.CASCADE, null=True, blank=True, related_name='logo_options',
+    )
     order = models.PositiveIntegerField('порядок', default=0)
     is_active = models.BooleanField('активен', default=True)
 
@@ -99,7 +105,8 @@ class LogoOption(models.Model):
         verbose_name_plural = 'варианты логотипа'
 
     def __str__(self):
-        return f'{self.name} — {self.price}'
+        label = f'{self.brand.name} — ' if self.brand else ''
+        return f'{label}{self.name} — {self.price}'
 
 
 class DeseOption(models.Model):

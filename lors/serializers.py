@@ -27,9 +27,11 @@ class PriceCategorySerializer(serializers.ModelSerializer):
 
 
 class LogoOptionSerializer(serializers.ModelSerializer):
+    brand = serializers.SlugRelatedField(slug_field='name', read_only=True)
+
     class Meta:
         model = LogoOption
-        fields = ['id', 'name', 'price']
+        fields = ['id', 'name', 'price', 'brand']
 
 
 class DeseOptionSerializer(serializers.ModelSerializer):
