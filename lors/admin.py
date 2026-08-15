@@ -3,8 +3,8 @@ from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
 from .models import (
-    Brand, CarModel, Color, Contact, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
-    Product, ProductCategory, ProductVariant, Review, SiteSettings,
+    Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
+    PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
 
 
@@ -61,6 +61,24 @@ class LogoOptionAdmin(ModelAdmin):
     list_display = ['name', 'price', 'order', 'is_active']
     list_editable = ['price', 'order', 'is_active']
     search_fields = ['name']
+
+
+@admin.register(DeseOption)
+class DeseOptionAdmin(ModelAdmin):
+    list_display = ['name', 'price', 'order', 'is_active']
+    list_editable = ['price', 'order', 'is_active']
+    search_fields = ['name']
+
+
+@admin.register(PricingSettings)
+class PricingSettingsAdmin(ModelAdmin):
+    list_display = ['package_price']
+
+    def has_add_permission(self, request):
+        return not PricingSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Material)
@@ -149,7 +167,7 @@ class LeadAdmin(ModelAdmin):
     list_editable = ['status']
     search_fields = ['name', 'phone', 'text']
     autocomplete_fields = [
-        'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo', 'product_variant',
+        'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo', 'dese', 'product_variant',
     ]
     inlines = [LeadPhotoInline]
     readonly_fields = ['created_at']
@@ -157,7 +175,8 @@ class LeadAdmin(ModelAdmin):
         ('Заявитель', {'fields': ('lead_type', 'name', 'phone', 'text', 'status')}),
         ('Заказ коврика', {
             'fields': (
-                'car_model', 'material', 'mat_color', 'border_color', 'heel_color', 'logo',
+                'car_model', 'material', 'mat_color', 'border_color', 'heel_color',
+                'has_package', 'logo', 'dese',
             ),
         }),
         ('Заказ товара', {'fields': ('product_variant',)}),

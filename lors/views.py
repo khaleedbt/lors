@@ -7,13 +7,13 @@ from django.db.models import Prefetch
 
 from .filters import CarModelFilter
 from .models import (
-    Brand, CarModel, Color, Lead, LogoOption, Material, Page, PriceCategory,
+    Brand, CarModel, Color, DeseOption, Lead, LogoOption, Material, Page, PriceCategory, PricingSettings,
     Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
 from .search import smart_search_car_models
 from .serializers import (
-    BrandSerializer, CarModelSerializer, ColorSerializer, LeadSerializer,
-    LogoOptionSerializer, MaterialSerializer, PageSerializer, PriceCategorySerializer,
+    BrandSerializer, CarModelSerializer, ColorSerializer, DeseOptionSerializer, LeadSerializer,
+    LogoOptionSerializer, MaterialSerializer, PageSerializer, PriceCategorySerializer, PricingSettingsSerializer,
     ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer,
 )
 
@@ -59,7 +59,7 @@ class LeadViewSet(
 ):
     queryset = Lead.objects.select_related(
         'car_model__brand', 'car_model__price_category', 'material', 'mat_color', 'border_color', 'heel_color',
-        'logo', 'product_variant',
+        'logo', 'dese', 'product_variant',
     ).prefetch_related('photos')
     serializer_class = LeadSerializer
     parser_classes = [MultiPartParser, FormParser]
@@ -98,6 +98,20 @@ class LogoOptionViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LogoOption.objects.filter(is_active=True)
     serializer_class = LogoOptionSerializer
     permission_classes = [permissions.AllowAny]
+
+
+class DeseOptionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = DeseOption.objects.filter(is_active=True)
+    serializer_class = DeseOptionSerializer
+    permission_classes = [permissions.AllowAny]
+
+
+class PricingSettingsView(generics.RetrieveAPIView):
+    serializer_class = PricingSettingsSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_object(self):
+        return PricingSettings.load()
 
 
 class MaterialViewSet(viewsets.ReadOnlyModelViewSet):
