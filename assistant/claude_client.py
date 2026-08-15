@@ -2,7 +2,7 @@ import anthropic
 from django.conf import settings
 from django.db.models import Q
 
-from lors.models import Contact, LogoOption, Product, SiteSettings
+from lors.models import Contact, DeseOption, LogoOption, Product, PricingSettings, SiteSettings
 from lors.search import smart_search_car_models
 
 MODEL = 'claude-opus-4-8'
@@ -64,10 +64,11 @@ CALCULATE_TOOL = {
     'name': 'calculate_mat_price',
     'description': (
         'Посчитать итоговую цену коврика для конкретной модели авто с учётом '
-        'логотипа. Модель для расчёта сначала нужно найти через search_car_models — '
-        'сюда передавай точное название модели из его результатов (или марку+модель), '
-        'не произвольный текст клиента. Логотип передавай, только если клиент его '
-        'упомянул — без него посчитается базовая стоимость по категории.'
+        'опций: добавить пакет, логотип, дэсе (подпятник). Модель для расчёта '
+        'сначала нужно найти через search_car_models — сюда передавай точное '
+        'название модели из его результатов (или марку+модель), не произвольный '
+        'текст клиента. Опции передавай, только если клиент их упомянул — '
+        'без них посчитается база стоимость по категории.'
     ),
     'input_schema': {
         'type': 'object',
@@ -76,9 +77,17 @@ CALCULATE_TOOL = {
                 'type': 'string',
                 'description': 'Точное название модели (как в результатах search_car_models), не свободный текст.',
             },
+            'has_package': {
+                'type': 'boolean',
+                'description': 'Клиент хочет добавить пакет за отдельную плату (только если у модели пакета ещё нет).',
+            },
             'logo': {
                 'type': 'string',
                 'description': 'Название варианта логотипа из системного промпта, например "Обычный".',
+            },
+            'dese': {
+                'type': 'string',
+                'description': 'Название варианта дэсе из системного промпта, например "Тип 1".',
             },
         },
         'required': ['car_model_query'],
@@ -106,8 +115,13 @@ def _format_contacts(contacts) -> str:
 
 
 def _format_pricing_options() -> str:
+    package_price = PricingSettings.load().package_price
     logos = ', '.join(f'{o.name} (+{o.price}$)' for o in LogoOption.objects.filter(is_active=True))
-    return f'Варианты логотипа: {logos or "—"}.'
+    deses = ', '.join(f'{o.name} (+{o.price}$)' for o in DeseOption.objects.filter(is_active=True))
+    return (
+        f'Добавить пакет (если у модели его ещё нет): +{package_price}$. '
+        f'Варианты логотипа: {logos or "—"}. Варианты дэсе (подпятника): {deses or "—"}.'
+    )
 
 
 def _system_prompt() -> str:
@@ -144,9 +158,9 @@ def _system_prompt() -> str:
         '(тоже не всё сразу, а спроси, интересно ли).\n\n'
         'ЦЕНА КОВРИКА: search_car_models уже возвращает базовую цену найденной модели (если задана). '
         'Озвучивай её обычными словами ("выйдет в 120 долларов"), не как техническое поле. '
-        'Если клиент спрашивает про логотип или хочет точную цену с ним — '
-        'сначала уточни, какой именно вариант логотипа нужен, затем вызови '
-        'calculate_mat_price с этой опцией и озвучь итоговую сумму из его ответа. '
+        'Если клиент спрашивает про доп. опции (пакет/логотип/дэсе) или хочет точную цену с ними — '
+        'сначала уточни, какие именно опции нужны (по одной за раз, не все сразу), затем вызови '
+        'calculate_mat_price с этими опциями и озвучь итоговую сумму из его ответа. '
         'Если у модели ещё нет заданной цены (search_car_models не показал цену) — так и скажи, '
         'уточнить может только менеджер, не выдумывай сумму.\n\n'
         'ТОВАРЫ: если клиент спрашивает про что-то, кроме коврика (сумки, органайзеры и т.п.) — '
@@ -192,7 +206,7 @@ def _run_product_search_tool(query: str) -> str:
     return '\n'.join(lines)
 
 
-def _run_calculate_tool(car_model_query: str, logo: str | None = None) -> str:
+def _run_calculate_tool(car_model_query: str, has_package: bool = False, logo: str | None = None, dese: str | None = None) -> str:
     results = list(smart_search_car_models(car_model_query).select_related('price_category')[:5])
     if not results:
         return 'Модель не найдена — сначала используй search_car_models, чтобы получить точное название.'
@@ -207,6 +221,11 @@ def _run_calculate_tool(car_model_query: str, logo: str | None = None) -> str:
     total = cm.price_category.price
     breakdown = [f'{cm.price_category.name}: {cm.price_category.price}$']
 
+    if has_package:
+        package_price = PricingSettings.load().package_price
+        total += package_price
+        breakdown.append(f'добавить пакет: +{package_price}$')
+
     if logo:
         logo_obj = LogoOption.objects.filter(name__iexact=logo, is_active=True).first()
         if logo_obj:
@@ -215,13 +234,23 @@ def _run_calculate_tool(car_model_query: str, logo: str | None = None) -> str:
         else:
             breakdown.append(f'(логотип "{logo}" не найден в списке вариантов — не учтён)')
 
+    if dese:
+        dese_obj = DeseOption.objects.filter(name__iexact=dese, is_active=True).first()
+        if dese_obj:
+            total += dese_obj.price
+            breakdown.append(f'дэсе «{dese_obj.name}»: +{dese_obj.price}$')
+        else:
+            breakdown.append(f'(дэсе "{dese}" не найден в списке вариантов — не учтён)')
+
     return '; '.join(breakdown) + f' | Итого: {total}$'
 
 
 TOOL_HANDLERS = {
     'search_car_models': lambda i: _run_search_tool(i['query']),
     'search_products': lambda i: _run_product_search_tool(i['query']),
-    'calculate_mat_price': lambda i: _run_calculate_tool(i['car_model_query'], i.get('logo')),
+    'calculate_mat_price': lambda i: _run_calculate_tool(
+        i['car_model_query'], i.get('has_package', False), i.get('logo'), i.get('dese'),
+    ),
 }
 
 
