@@ -58,9 +58,11 @@ class PriceCategoryAdmin(ModelAdmin):
 
 @admin.register(LogoOption)
 class LogoOptionAdmin(ModelAdmin):
-    list_display = ['name', 'price', 'order', 'is_active']
+    list_display = ['name', 'brand', 'price', 'order', 'is_active']
+    list_filter = ['brand']
     list_editable = ['price', 'order', 'is_active']
-    search_fields = ['name']
+    search_fields = ['name', 'brand__name']
+    autocomplete_fields = ['brand']
 
 
 @admin.register(DeseOption)
