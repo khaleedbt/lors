@@ -1,6 +1,7 @@
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, mixins, permissions, viewsets
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.parsers import FormParser, MultiPartParser
 
 from django.db.models import Prefetch
@@ -51,6 +52,25 @@ class CarModelViewSet(viewsets.ReadOnlyModelViewSet):
         return smart_search_car_models(search)
 
 
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    """SessionAuthentication без CSRF-проверки. Этот API вызывается через fetch()
+    с JSON/multipart с отдельного фронтенда, а не браузерными <form>-ами на
+    том же домене — классическая CSRF-атака тут не применима. Без этого
+    любой POST 403-тся, если в браузере есть залогиненная staff-сессия
+    (например, тестируешь калькулятор в соседней вкладке с открытой
+    /admin/) — кука сессии долетает, а CSRF-токен фронт не шлёт (и не должен,
+    это отдельное SPA). Анонимных покупателей без сессии это не задевало —
+    у них SessionAuthentication молча возвращает None, до enforce_csrf дело
+    не доходит.
+
+    Важно: нельзя было сделать это через get_authenticators() + self.action —
+    DRF вызывает get_authenticators() до того, как self.action вообще
+    установлен (AttributeError), поэтому исключаем CSRF на уровне самого
+    класса аутентификации, а не по действию."""
+    def enforce_csrf(self, request):
+        return
+
+
 class LeadViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -63,6 +83,7 @@ class LeadViewSet(
     ).prefetch_related('photos')
     serializer_class = LeadSerializer
     parser_classes = [MultiPartParser, FormParser]
+    authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
     filterset_fields = ['status', 'lead_type', 'car_model']
 
     def get_permissions(self):
@@ -80,6 +101,9 @@ class ReviewViewSet(
     serializer_class = ReviewSerializer
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [permissions.AllowAny]
+    # Весь вьюсет публичный (см. permission_classes) — та же причина CSRF 403
+    # у залогиненных staff, что в LeadViewSet выше.
+    authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
 
     def get_queryset(self):
         qs = Review.objects.all()
