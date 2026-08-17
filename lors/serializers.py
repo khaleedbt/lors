@@ -1,7 +1,6 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from . import meta_capi
 from .models import (
     Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
     PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
@@ -147,7 +146,12 @@ class LeadSerializer(serializers.ModelSerializer):
         LeadPhoto.objects.bulk_create(
             LeadPhoto(lead=lead, image=image) for image in photos
         )
-        meta_capi.send_lead_event(lead, request=self.context.get('request'), total_price=self.get_total_price(lead))
+        # Meta CAPI НЕ отправляется отсюда — фронт (src/lib/metaPixel.ts в
+        # lorssy-frontend) сам шлёт событие Lead на POST /api/meta-event/
+        # сразу после успешного submitLead(), с тем же event_id, что ушёл
+        # браузерным Pixel'ом. Раньше здесь генерировался свой, отдельный
+        # event_id ("lead-<id>") — событие уходило в Meta дважды с разными
+        # id, дедупликация не работала (см. meta_capi.py).
         return lead
 
 

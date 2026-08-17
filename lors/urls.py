@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     BrandViewSet, CarModelViewSet, ColorViewSet, DeseOptionViewSet, LeadViewSet, LogoOptionViewSet,
-    MaterialViewSet, PageViewSet, PriceCategoryViewSet, PricingSettingsView, ProductCategoryViewSet,
+    MaterialViewSet, MetaEventView, PageViewSet, PriceCategoryViewSet, PricingSettingsView, ProductCategoryViewSet,
     ProductViewSet, ReviewViewSet, SiteSettingsView,
 )
 
@@ -24,4 +24,5 @@ router.register('product-categories', ProductCategoryViewSet, basename='product-
 urlpatterns = router.urls + [
     path('settings/', SiteSettingsView.as_view(), name='site-settings'),
     path('pricing-settings/', PricingSettingsView.as_view(), name='pricing-settings'),
+    path('meta-event/', MetaEventView.as_view(), name='meta-event'),
 ]

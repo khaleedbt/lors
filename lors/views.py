@@ -1,11 +1,14 @@
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import generics, mixins, permissions, viewsets
+from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from django.db.models import Prefetch
 
+from . import meta_capi
 from .filters import CarModelFilter
 from .models import (
     Brand, CarModel, Color, DeseOption, Lead, LogoOption, Material, Page, PriceCategory, PricingSettings,
@@ -178,3 +181,24 @@ class SiteSettingsView(generics.RetrieveAPIView):
 
     def get_object(self):
         return SiteSettings.load()
+
+
+class MetaEventView(APIView):
+    """POST /api/meta-event/ — принимает событие от lorssy-frontend
+    (src/lib/metaPixel.ts → metaTrack) и пересылает в Meta Conversions API
+    с тем же event_id, что уже ушёл браузерным Pixel'ом (см. meta_capi.py —
+    почему это критично для дедупликации). Публичный, без CSRF (SPA на
+    отдельном домене, не браузерная форма — та же причина, что у
+    LeadViewSet/ReviewViewSet, см. CsrfExemptSessionAuthentication выше).
+
+    Всегда отвечает 204, включая некорректный ввод и ошибки Meta — фронту
+    не с чем разбираться (`.catch(() => {})` на его стороне), а любой
+    другой статус только зашумил бы консоль пользователя без пользы."""
+    authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        ip = meta_capi.get_client_ip(request) or 'unknown'
+        if not meta_capi.is_rate_limited(ip):
+            meta_capi.build_and_send(request, request.data if hasattr(request, 'data') else {})
+        return Response(status=status.HTTP_204_NO_CONTENT)
