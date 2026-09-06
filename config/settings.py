@@ -65,7 +65,12 @@ INSTALLED_APPS = [
 ]
 
 TELEGRAM_BOT_TOKEN = config('TELEGRAM_BOT_TOKEN', default='')
+# Ключи провайдеров ИИ — секреты, остаются в .env. Какой из них сейчас
+# активен — переключается не отсюда, а в /admin/ (AssistantSettings, см.
+# assistant/ai_provider.py), без рестарта.
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+DEEPSEEK_API_KEY = config('DEEPSEEK_API_KEY', default='')
 
 # Внутренний API ассистента (см. assistant/views.py) — канал-адаптеры (боты)
 # ходят сюда по HTTP вместо прямого Python-вызова. ASSISTANT_API_KEY пустым
@@ -205,6 +210,21 @@ UNFOLD = {
                         'title': 'Отзывы',
                         'icon': 'rate_review',
                         'link': reverse_lazy('admin:lors_review_changelist'),
+                    },
+                ],
+            },
+            {
+                'title': 'Ассистент',
+                'items': [
+                    {
+                        'title': 'Настройки ассистента',
+                        'icon': 'smart_toy',
+                        'link': reverse_lazy('admin:assistant_assistantsettings_changelist'),
+                    },
+                    {
+                        'title': 'Сообщения бота',
+                        'icon': 'forum',
+                        'link': reverse_lazy('admin:assistant_botmessage_changelist'),
                     },
                 ],
             },

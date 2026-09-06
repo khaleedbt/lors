@@ -50,7 +50,9 @@ cp .env.example .env
 | `DB_HOST`       | хост БД (`localhost`)                |
 | `DB_PORT`       | порт БД (`5432`)                     |
 | `TELEGRAM_BOT_TOKEN` | токен Telegram-бота (от @BotFather) |
-| `ANTHROPIC_API_KEY`  | ключ Claude API (нужен бэкенду — `/api/assistant/message/`) |
+| `ANTHROPIC_API_KEY`  | ключ Claude API (нужен, если в /admin/ выбран провайдер Claude) |
+| `OPENAI_API_KEY`     | ключ OpenAI API (нужен, если в /admin/ выбран провайдер OpenAI) |
+| `DEEPSEEK_API_KEY`   | ключ DeepSeek API (нужен, если в /admin/ выбран провайдер DeepSeek) |
 | `ASSISTANT_API_KEY`  | секрет для вызова `/api/assistant/message/` (канал-адаптер → бэкенд); пустым быть не должно — см. `assistant/permissions.py` |
 | `BACKEND_BASE_URL`   | адрес бэкенда для бота (по умолчанию `http://127.0.0.1:8000`) |
 | `META_PIXEL_ID` / `META_ACCESS_TOKEN` | Meta Conversions API (см. `lors/meta_capi.py`); пусты по умолчанию — интеграция no-op, пока не заведён Pixel в Meta Business Manager |
@@ -331,11 +333,29 @@ python manage.py runbot
 Второй процесс рядом с `runserver` — при разработке через `run.sh` (см. ниже).
 Нужны `TELEGRAM_BOT_TOKEN` (от [@BotFather](https://t.me/BotFather)),
 `ASSISTANT_API_KEY` и `BACKEND_BASE_URL` (адрес, на котором поднят
-Django — по умолчанию `http://127.0.0.1:8000`) в `.env`; `ANTHROPIC_API_KEY`
-нужен самому бэкенду (для `/api/assistant/message/`), не боту.
+Django — по умолчанию `http://127.0.0.1:8000`) в `.env`; ключ провайдера
+ИИ (`ANTHROPIC_API_KEY`/`OPENAI_API_KEY`) нужен самому бэкенду (для
+`/api/assistant/message/`), не боту.
 
-Клиент пишет боту на любом языке (упор на сирийский диалект арабского) —
-у Claude есть три инструмента (`assistant/claude_client.py`):
+### Провайдер ИИ — Claude, OpenAI или DeepSeek
+
+Переключается в `/admin/` → «Ассистент» → «Настройки ассистента»
+(`AssistantSettings.provider`, синглтон, как `SiteSettings`) — **не**
+через `.env`: правка в админке действует сразу, без рестарта процесса,
+`assistant/ai_provider.py` читает значение из БД на каждый запрос. Ключи
+самих провайдеров (`ANTHROPIC_API_KEY` и т.п.) остаются секретами в
+`.env` — в БД хранится только выбор, каким из уже настроенных
+провайдеров пользоваться. Один активный провайдер за раз, без
+автоматического fallback между ними. Промпт и три инструмента — общие
+для всех трёх (`assistant/ai_tools.py`), отличаются только тонкие
+клиенты сверху (у каждого провайдера свой формат tool-calling, хотя
+JSON Schema самих инструментов один и тот же):
+
+- `assistant/claude_client.py` — Anthropic Messages API (`claude-opus-4-8`, ручной tool-use цикл).
+- `assistant/openai_client.py` — OpenAI Responses API (`gpt-6-astra`, `client.responses.create` + `function_call`/`function_call_output`).
+- `assistant/deepseek_client.py` — DeepSeek через `openai`-пакет с другим `base_url` (`https://api.deepseek.com`), классический формат Chat Completions (`client.chat.completions.create` + `message.tool_calls`), модель `deepseek-v4-flash` — заметно дешевле обоих остальных провайдеров, для этого бота (шаблонные ответы + tool-calling, без глубокого рассуждения) качества должно хватать.
+
+Инструменты, которые доступны модели независимо от провайдера:
 
 - `search_car_models` — дёргает тот же `smart_search_car_models`
   (`lors/search.py`), что и `/api/car-models/?search=`. Поиск идёт по
@@ -368,10 +388,15 @@ Django — по умолчанию `http://127.0.0.1:8000`) в `.env`; `ANTHROPI
 - `assistant/views.py` — `AssistantMessageView`, HTTP-контракт
   (`POST /api/assistant/message/`), канал-агностичный
 - `assistant/brain.py` — `handle_message(text, channel, external_user_id)`,
-  вся логика ответа (история переписки + вызов Claude + лог), вызывается
+  вся логика ответа (история переписки + вызов ИИ + лог), вызывается
   только из `AssistantMessageView`, напрямую больше нигде не импортируется
-- `assistant/claude_client.py` — вызов Claude (`claude-opus-4-8`, ручной
-  tool-use цикл, без beta tool_runner)
+- `assistant/ai_provider.py` — читает `AssistantSettings.provider` (`claude`/`openai`/`deepseek`) из БД и вызывает нужный клиент
+- `assistant/ai_tools.py` — системный промпт и три инструмента, общие для
+  всех провайдеров (сам JSON Schema один и тот же, оборачивающий формат
+  под конкретный SDK — уже в `claude_client.py`/`openai_client.py`/`deepseek_client.py`)
+- `assistant/claude_client.py` / `assistant/openai_client.py` /
+  `assistant/deepseek_client.py` — тонкие клиенты конкретного провайдера
+  поверх `ai_tools`
 - `assistant/management/commands/runbot.py` — aiogram-адаптер, HTTP-клиент
   `/api/assistant/message/`; будущий Instagram/WhatsApp-адаптер будет
   дёргать тот же эндпоинт
