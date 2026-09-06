@@ -1,4 +1,4 @@
-from .claude_client import ask_claude
+from .ai_provider import ask_ai
 from .models import BotMessage
 
 HISTORY_LIMIT = 20  # last N messages (≈10 exchanges) kept as context for a reply
@@ -29,7 +29,7 @@ def handle_message(text: str, *, channel: str, external_user_id: str) -> str:
         direction=BotMessage.DIRECTION_IN, text=text,
     )
 
-    reply = ask_claude(text, history=history)
+    reply = ask_ai(text, history=history)
 
     BotMessage.objects.create(
         channel=channel, external_user_id=external_user_id,

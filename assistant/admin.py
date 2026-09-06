@@ -1,7 +1,19 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import BotMessage
+from .models import AssistantSettings, BotMessage
+
+
+@admin.register(AssistantSettings)
+class AssistantSettingsAdmin(ModelAdmin):
+    list_display = ['provider']
+    fields = ['provider']
+
+    def has_add_permission(self, request):
+        return not AssistantSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(BotMessage)
