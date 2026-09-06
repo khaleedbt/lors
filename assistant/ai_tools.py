@@ -116,9 +116,20 @@ def _format_contacts(contacts) -> str:
 
 
 def _format_pricing_options() -> str:
+    # LogoOption с 0029_moysklad_colors_and_brand_logos пошла по маркам —
+    # один и тот же "Обычный"/"Malaki" физически разный шильдик на каждую
+    # марку (~40 строк на одно название), но ЦЕНА одна и та же. В промпт
+    # нужны только различающиеся (название, цена) пары, а не все 80+ строк
+    # — иначе список раздувается копипастой одного и того же на каждую
+    # марку (см. историю бага в этом коммите).
+    # .order_by() сбрасывает Meta.ordering модели (order, id) — иначе Postgres
+    # тянет их в ORDER BY поверх DISTINCT, и одинаковые (name, price) не
+    # схлопываются, т.к. id всё равно у каждой строки уникален.
     package_price = PricingSettings.load().package_price
-    logos = ', '.join(f'{o.name} (+{o.price}$)' for o in LogoOption.objects.filter(is_active=True))
-    deses = ', '.join(f'{o.name} (+{o.price}$)' for o in DeseOption.objects.filter(is_active=True))
+    logo_prices = LogoOption.objects.filter(is_active=True).order_by().values_list('name', 'price').distinct()
+    dese_prices = DeseOption.objects.filter(is_active=True).order_by().values_list('name', 'price').distinct()
+    logos = ', '.join(f'{name} (+{price}$)' for name, price in logo_prices)
+    deses = ', '.join(f'{name} (+{price}$)' for name, price in dese_prices)
     return (
         f'Добавить коврик в багажник (если у модели его ещё нет в базовой категории): +{package_price}$. '
         f'Варианты логотипа: {logos or "—"}. Варианты дэсе (подпятника): {deses or "—"}.'
