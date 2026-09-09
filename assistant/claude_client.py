@@ -4,7 +4,7 @@ from django.conf import settings
 from . import ai_tools
 
 MODEL = 'claude-opus-4-8'
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 5  # запас на "потерянный" раунд (напр. поиск не той транслитерацией)
 
 
 def _client():

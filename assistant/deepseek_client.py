@@ -12,7 +12,7 @@ from . import ai_tools
 # deepseek-v4-pro доступен, если понадобится качество выше.
 MODEL = 'deepseek-v4-flash'
 BASE_URL = 'https://api.deepseek.com'
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 5  # запас на "потерянный" раунд (напр. поиск не той транслитерацией)
 
 
 def _client():

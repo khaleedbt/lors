@@ -6,7 +6,7 @@ from openai import OpenAI
 from . import ai_tools
 
 MODEL = 'gpt-6-astra'
-MAX_TOOL_ROUNDS = 3
+MAX_TOOL_ROUNDS = 5  # запас на "потерянный" раунд (напр. поиск не той транслитерацией)
 
 
 def _client():
