@@ -31,11 +31,20 @@ def ask_openai(user_text: str, history: list[dict] | None = None) -> str:
     # плоский формат Responses API принимает как есть, без конвертации.
     input_list = (history or []) + [{'role': 'user', 'content': user_text}]
 
+    # instructions/tools — один раз на вызов, не на каждый из до 3 раундов:
+    # OpenAI кэширует повторяющийся префикс запроса автоматически (без
+    # cache_control, в отличие от Anthropic), но только если он побайтово
+    # совпадает между запросами — пересчитывать заново на каждом раунде
+    # рисковало бы разъехаться (правка в /admin/ между раундами) и сорвать
+    # кэш-хит впустую.
+    instructions = ai_tools.system_prompt()
+    tools = _tools()
+
     for _ in range(MAX_TOOL_ROUNDS):
         response = client.responses.create(
             model=MODEL,
-            instructions=ai_tools.system_prompt(),
-            tools=_tools(),
+            instructions=instructions,
+            tools=tools,
             input=input_list,
         )
 
