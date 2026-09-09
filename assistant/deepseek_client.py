@@ -35,9 +35,13 @@ def ask_deepseek(user_text: str, history: list[dict] | None = None) -> str:
     messages = [{'role': 'system', 'content': ai_tools.system_prompt()}] + (history or []) + [
         {'role': 'user', 'content': user_text},
     ]
+    # tools — один раз на вызов, не на каждый раунд (то же соображение, что
+    # в openai_client.py: DeepSeek тоже кэширует повторяющийся префикс
+    # автоматически, только если он не меняется между запросами).
+    tools = _tools()
 
     for _ in range(MAX_TOOL_ROUNDS):
-        response = client.chat.completions.create(model=MODEL, messages=messages, tools=_tools())
+        response = client.chat.completions.create(model=MODEL, messages=messages, tools=tools)
         message = response.choices[0].message
 
         if not message.tool_calls:

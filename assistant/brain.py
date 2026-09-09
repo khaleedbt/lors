@@ -1,7 +1,7 @@
 from .ai_provider import ask_ai
 from .models import BotMessage
 
-HISTORY_LIMIT = 20  # last N messages (≈10 exchanges) kept as context for a reply
+HISTORY_LIMIT = 10  # last N messages (≈5 exchanges) kept as context for a reply — trimmed from 20 to cut tokens
 
 ROLE_BY_DIRECTION = {
     BotMessage.DIRECTION_IN: 'user',
