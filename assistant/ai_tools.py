@@ -188,12 +188,31 @@ def system_prompt() -> str:
     )
 
 
+def _car_display_name(m) -> str:
+    """base_model/body_variant — уже очищены и переведены на арабский
+    (parse_car_models), в отличие от сырого m.name, где ещё остаются
+    служебные русские слова вроде "Рестайлинг"/"Дорестайлинг". Отдавать
+    ИИ именно это, а не name — гарантия, что такие слова не долетят до
+    клиента, не зависящая от того, послушается ли модель текстовой
+    инструкции. Падаем на m.name только для ~4 строк каталога, где
+    base_model не распознан (см. data/model_parse_anomalies.log)."""
+    if not m.base_model:
+        return f'{m.brand.name} {m.name}'
+    year_range = ''
+    if m.year_from and m.year_to and m.year_from != m.year_to:
+        year_range = f'{m.year_from}-{m.year_to}'
+    elif m.year_from:
+        year_range = str(m.year_from)
+    extras = ', '.join(filter(None, [m.body_variant, year_range]))
+    return f'{m.brand.name} {m.base_model} ({extras})' if extras else f'{m.brand.name} {m.base_model}'
+
+
 def _run_search_tool(query: str) -> str:
     results = list(smart_search_car_models(query).select_related('price_category')[:10])
     if not results:
         return 'Ничего не найдено.'
     return '\n'.join(
-        f'{m.brand.name} {m.name} | код шаблона: {m.template_code or "—"} | '
+        f'{_car_display_name(m)} | код шаблона: {m.template_code or "—"} | '
         f'тип авто: {m.car_type or "—"} | шофёр: {m.driver_cut or "—"} | '
         f'пакет: {m.package or "—"} | 2-й ряд: {m.second_row_package or "—"} | '
         f'примечания: {m.notes or "—"} | '
@@ -224,12 +243,12 @@ def _run_calculate_tool(car_model_query: str, has_package: bool = False, logo: s
     if not results:
         return 'Модель не найдена — сначала используй search_car_models, чтобы получить точное название.'
     if len(results) > 1:
-        names = ', '.join(f'{m.brand.name} {m.name}' for m in results[:5])
+        names = ', '.join(_car_display_name(m) for m in results[:5])
         return f'Найдено несколько моделей, уточни у клиента какая именно: {names}'
 
     cm = results[0]
     if not cm.price_category:
-        return f'Для {cm.brand.name} {cm.name} цена ещё не задана — нужно уточнить у менеджера.'
+        return f'Для {_car_display_name(cm)} цена ещё не задана — нужно уточнить у менеджера.'
 
     total = cm.price_category.price
     breakdown = [f'{cm.price_category.name}: {cm.price_category.price}$']
