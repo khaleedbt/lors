@@ -18,6 +18,14 @@ rows, or after someone edits a name by hand) — it only ever overwrites
 base_model/body_variant/year_from/year_to, computed fresh from `name`
 every time; it never touches car_type, price_category or anything a human
 filled in through the admin.
+
+body_variant is stored in Arabic (BODY_VARIANT_MAP), not the Cyrillic word
+matched in `name` — this is client-facing (site cascade selector, assistant
+tool results), and the site is Arabic-only. "Рестайлинг"/"Дорестайлинг" are
+stripped from base_model and not stored anywhere — they're never shown to a
+client, so no translation needed there. "Long"/"Sportback" are deliberately
+left inside base_model as-is (not recognized body-variant words) — not
+translating those was a conscious call, not an oversight.
 """
 
 import pathlib
@@ -29,11 +37,24 @@ from lors.models import CarModel
 
 DATA_DIR = pathlib.Path(__file__).resolve().parent.parent.parent.parent / 'data'
 
-BODY_VARIANT_WORDS = [
-    'Седан', 'Хэтчбек', 'Универсал', 'Купе', 'Кроссовер', 'Внедорожник',
-    'Лифтбек', 'Минивэн', 'Пикап', 'Родстер', 'Кабриолет', 'Фастбек',
-]
-BODY_VARIANT_RE = re.compile('|'.join(BODY_VARIANT_WORDS))
+# Ключ — то, что реально встречается в исходном name (кириллица, из
+# исходной таблицы); значение — что сохраняется в body_variant и в итоге
+# уходит клиенту (сайт/бот — только на арабском, см. обсуждение перевода).
+BODY_VARIANT_MAP = {
+    'Седан': 'سيدان',
+    'Хэтчбек': 'هاتشباك',
+    'Универсал': 'ستيشن واغن',
+    'Купе': 'كوبيه',
+    'Кроссовер': 'كروس أوفر',
+    'Внедорожник': 'دفع رباعي',
+    'Лифтбек': 'ليفت باك',
+    'Минивэн': 'ميني فان',
+    'Пикап': 'بيك أب',
+    'Родстер': 'رودستر',
+    'Кабриолет': 'مكشوفة',
+    'Фастбек': 'فاست باك',
+}
+BODY_VARIANT_RE = re.compile('|'.join(BODY_VARIANT_MAP))
 
 # "(2000 - 2006)", "(2000-2006)", "(2000 – 2006)", "(2018-...)", "2018 - ..." (no parens),
 # "(2026)" (single year, no dash) — always a 19xx/20xx year, optionally followed by a
@@ -72,15 +93,22 @@ def parse_years(name):
 
 
 def parse_body_variant(name):
+    """Возвращает (исходное_слово_из_name, арабский_перевод) — исходное
+    нужно, чтобы вырезать его из name при сборке base_model (там ещё
+    кириллица), а перевод — то, что реально сохраняется в body_variant
+    и в итоге видит клиент (сайт/бот — только на арабском)."""
     m = BODY_VARIANT_RE.search(name)
-    return m.group(0) if m else ''
+    if not m:
+        return '', ''
+    matched = m.group(0)
+    return matched, BODY_VARIANT_MAP[matched]
 
 
-def derive_base_model(name, year_span, body_variant):
+def derive_base_model(name, year_span, matched_ru_word):
     text = name[:year_span[0]] + name[year_span[1]:]
     text = PAREN_RE.sub(' ', text)
-    if body_variant:
-        text = text.replace(body_variant, ' ')
+    if matched_ru_word:
+        text = text.replace(matched_ru_word, ' ')
     text = RESTYLE_RE.sub(' ', text)
     text = WHITESPACE_RE.sub(' ', text).strip(' -–,')
     # Strip a trailing roman-numeral generation marker ("Audi A3 I/II/III..." ->
@@ -104,8 +132,8 @@ class Command(BaseCommand):
                 anomalies.append(f'id {car_model.id}: no recognizable year in {car_model.name!r}, left untouched')
                 continue
 
-            body_variant = parse_body_variant(car_model.name)
-            base_model = derive_base_model(car_model.name, year_span, body_variant)
+            matched_ru_word, body_variant = parse_body_variant(car_model.name)
+            base_model = derive_base_model(car_model.name, year_span, matched_ru_word)
             if not base_model:
                 anomalies.append(
                     f'id {car_model.id}: year parsed ({year_from}-{year_to}) but base_model came out empty '
