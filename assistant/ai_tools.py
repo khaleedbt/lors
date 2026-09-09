@@ -8,6 +8,8 @@ OpenAI Responses parameters / DeepSeek-Chat-Completions — по форме эт
 и тот же JSON Schema, разнится только оборачивающий ключ).
 """
 
+import re
+
 from django.db.models import Q
 
 from lors.models import Contact, DeseOption, LogoOption, Product, PricingSettings, SiteSettings
@@ -115,11 +117,26 @@ TOOL_DEFS = [
 ]
 
 
+def _whatsapp_url(phone: str) -> str:
+    """wa.me принимает номер только цифрами, без +/пробелов/скобок."""
+    digits = re.sub(r'\D', '', phone)
+    return f'https://wa.me/{digits}'
+
+
 def _format_contacts(contacts) -> str:
+    # Для телефона/WhatsApp собираем готовую markdown-ссылку [текст](url) —
+    # бот (runbot.py, markdown_to_telegram_html) превращает её в кликабельную
+    # ссылку на WhatsApp. Ссылку собираем сами, а не поручаем это ИИ: он тот
+    # же номер может передать с ошибкой в цифрах или формате wa.me (тот же
+    # класс риска, что и с logo/dese — см. calculate_mat_price выше).
     type_names = dict(Contact.TYPE_CHOICES)
     by_type = {}
     for c in contacts:
-        value = f'{c.value} ({c.label})' if c.label else c.value
+        value = c.value
+        if c.contact_type in (Contact.TYPE_PHONE, Contact.TYPE_WHATSAPP):
+            value = f'[{c.value}]({_whatsapp_url(c.value)})'
+        if c.label:
+            value = f'{value} ({c.label})'
         by_type.setdefault(c.contact_type, []).append(value)
     if not by_type:
         return '—'
@@ -194,8 +211,10 @@ def system_prompt() -> str:
         'используй search_products, не search_car_models.\n\n'
         f'{_format_pricing_options()}\n\n'
         'В конце, когда вариант определён и клиент готов к заказу, предложи связаться, '
-        'используя контакты ниже. Не повторяй контакты в каждом сообщении подряд — только '
-        'когда это уместно. '
+        'используя контакты ниже. Телефон/WhatsApp там уже даны в виде markdown-ссылки '
+        '[номер](https://wa.me/...) — приведи её В ТОЧНОСТИ как есть, не убирай квадратные '
+        'скобки и не переписывай номер отдельным текстом, иначе ссылка станет некликабельной. '
+        'Не повторяй контакты в каждом сообщении подряд — только когда это уместно. '
         'Если вопрос клиента не про каталог и не про товары — отвечай как обычный дружелюбный '
         'ассистент компании, инструмент не вызывай.\n\n'
         f'Контакты: адрес {s.address or "—"}. {contacts_line}.'
