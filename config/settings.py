@@ -45,6 +45,32 @@ if DEBUG:
         'http://localhost:5173', 'http://127.0.0.1:5173',
     ]
 
+# Прод стоит за nginx (см. deploy/lorssy.com.nginx.conf в lorssy-frontend) —
+# сам gunicorn видит только plain HTTP на 127.0.0.1:8001, HTTPS терминируется
+# на nginx. Без SECURE_PROXY_SSL_HEADER Django считал бы КАЖДЫЙ запрос
+# небезопасным и с SECURE_SSL_REDIRECT=True ушёл бы в бесконечный редирект
+# (уже https-запрос редиректило бы на https же, потому что сам процесс видел
+# бы его как http). nginx уже прокидывает X-Forwarded-Proto — используем его.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Выключено в DEBUG (локальный runserver по http, редирект/secure-cookie
+# сломали бы локальную разработку) — по умолчанию включено, если DEBUG=False.
+# https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=not DEBUG, cast=bool)
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=not DEBUG, cast=bool)
+
+# HSTS отдельно от чекбокса выше и по умолчанию 0 (выключен) даже при
+# DEBUG=False — Django прямо предупреждает, что его нельзя включать не глядя
+# (браузер запомнит и будет требовать HTTPS для домена ещё N секунд, даже
+# если потом понадобится откатиться на HTTP). Явно задать в .env на проде,
+# начав с небольшого значения (сутки — 86400) и наращивая только после
+# подтверждения, что HTTPS всегда работает; INCLUDE_SUBDOMAINS/PRELOAD —
+# только когда уверены, что ВСЕ поддомены тоже всегда на HTTPS.
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=0, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
+
 
 # Application definition
 

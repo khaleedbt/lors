@@ -519,5 +519,40 @@ sudo nginx -t && sudo systemctl reload nginx
 Перед этим в прод `.env`:
 - `ALLOWED_HOSTS=lorssy.com,www.lorssy.com` (иначе Django ответит `DisallowedHost`)
 - `DEBUG=False`
+- `SECRET_KEY` — **обязательно заменить** значение, если там всё ещё
+  дефолт из `django-admin startproject` (узнаётся по префиксу
+  `django-insecure-`, у нас именно так и было в `.env` до этого коммита —
+  ключ никогда не менялся с момента создания проекта). Сгенерировать
+  новый:
+  ```bash
+  python manage.py shell -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+  ```
+  Замена ключа разлогинит все активные сессии в `/admin/` (подписи cookie
+  станут недействительны) — на боевой трафик API это не влияет, там нет
+  сессионной авторизации.
 
 HTTPS (Let's Encrypt) — отдельно, самостоятельно (`certbot --nginx -d lorssy.com -d www.lorssy.com`).
+
+После HTTPS — включить в `.env` (см. `config/settings.py`, по умолчанию
+выключено при `DEBUG=False` — нет, нужно явно; см. ниже про HSTS):
+- `SECURE_SSL_REDIRECT=True`, `SESSION_COOKIE_SECURE=True`,
+  `CSRF_COOKIE_SECURE=True` — по умолчанию уже включаются сами при
+  `DEBUG=False`, специально задавать не обязательно, если устраивает
+  дефолт.
+- `SECURE_HSTS_SECONDS` — **не включён по умолчанию даже на проде**,
+  Django прямо предупреждает: браузер запомнит требование HTTPS для
+  домена на весь этот срок, и откатиться будет не так просто. Включать
+  вручную и постепенно: начать с `SECURE_HSTS_SECONDS=86400` (сутки),
+  подождать день-два без проблем, затем поднять до `2592000` (месяц) и
+  только потом до `31536000` (год, стандартная финальная величина).
+  `SECURE_HSTS_INCLUDE_SUBDOMAINS=True`/`SECURE_HSTS_PRELOAD=True` —
+  только когда уверены, что вообще все поддомены `*.lorssy.com` тоже
+  всегда на HTTPS.
+- `django.middleware.security.SecurityMiddleware` (см. `SECURE_PROXY_SSL_HEADER`
+  в `config/settings.py`) уже настроен читать `X-Forwarded-Proto` от
+  nginx — без этого `SECURE_SSL_REDIRECT=True` ушёл бы в бесконечный
+  редирект, т.к. gunicorn видит только plain HTTP от nginx.
+
+Проверить итоговую конфигурацию: `DEBUG=False python manage.py check --deploy`
+(должен остаться только `security.W004` про HSTS, пока не включён — это
+осознанный выбор, см. выше).
