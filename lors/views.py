@@ -15,6 +15,7 @@ from .models import (
     Brand, CarModel, Color, DeseOption, Lead, LogoOption, Material, Page, PriceCategory, PricingSettings,
     Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
+from .permissions import OriginAllowed, is_allowed_origin
 from .search import smart_search_car_models
 from .serializers import (
     BrandSerializer, CarModelSerializer, ColorSerializer, DeseOptionSerializer, LeadSerializer,
@@ -92,7 +93,7 @@ class LeadViewSet(
 
     def get_permissions(self):
         if self.action == 'create':
-            return [permissions.AllowAny()]
+            return [OriginAllowed()]
         return [permissions.IsAdminUser()]
 
     def get_throttles(self):
@@ -113,10 +114,16 @@ class ReviewViewSet(
 ):
     serializer_class = ReviewSerializer
     parser_classes = [MultiPartParser, FormParser]
-    permission_classes = [permissions.AllowAny]
-    # Весь вьюсет публичный (см. permission_classes) — та же причина CSRF 403
+    # Весь вьюсет публичный (см. get_permissions) — та же причина CSRF 403
     # у залогиненных staff, что в LeadViewSet выше.
     authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
+
+    def get_permissions(self):
+        # list/retrieve — открыты всем (и так отдают только is_published=True,
+        # см. get_queryset); create — та же Origin-проверка, что у LeadViewSet.
+        if self.action == 'create':
+            return [OriginAllowed()]
+        return [permissions.AllowAny()]
 
     def get_queryset(self):
         qs = Review.objects.all()
@@ -207,14 +214,17 @@ class MetaEventView(APIView):
     отдельном домене, не браузерная форма — та же причина, что у
     LeadViewSet/ReviewViewSet, см. CsrfExemptSessionAuthentication выше).
 
-    Всегда отвечает 204, включая некорректный ввод и ошибки Meta — фронту
-    не с чем разбираться (`.catch(() => {})` на его стороне), а любой
-    другой статус только зашумил бы консоль пользователя без пользы."""
+    Всегда отвечает 204, включая некорректный ввод, чужой Origin и ошибки
+    Meta — фронту не с чем разбираться (`.catch(() => {})` на его стороне),
+    а любой другой статус только зашумил бы консоль пользователя без
+    пользы. Поэтому Origin-проверка (см. lors/permissions.py) здесь не
+    permission_classes (это дало бы 403), а тихий пропуск отправки —
+    тот же принцип, что уже был у is_rate_limited ниже."""
     authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         ip = meta_capi.get_client_ip(request) or 'unknown'
-        if not meta_capi.is_rate_limited(ip):
+        if is_allowed_origin(request) and not meta_capi.is_rate_limited(ip):
             meta_capi.build_and_send(request, request.data if hasattr(request, 'data') else {})
         return Response(status=status.HTTP_204_NO_CONTENT)
