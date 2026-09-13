@@ -197,6 +197,43 @@ Swagger UI: http://127.0.0.1:8000/api/docs/
 ReDoc: http://127.0.0.1:8000/api/redoc/
 OpenAPI-схема (JSON/YAML): http://127.0.0.1:8000/api/schema/
 
+### Защита от спама
+
+- **Throttling** (`config/settings.py` → `REST_FRAMEWORK`): общий лимит
+  `anon: 120/min` / `user: 300/min` на все публичные эндпоинты (защита от
+  скрейпинга каталога), и отдельные, заметно более жёсткие лимиты по
+  `ScopedRateThrottle` на реальные точки спама — `POST /api/leads/`
+  (`lead_create: 5/hour`) и `POST /api/reviews/` (`review_create: 10/hour`),
+  см. `get_throttles()` в `lors/views.py`. Считается через кэш Django
+  (по умолчанию `LocMemCache` — отдельно на каждый gunicorn-воркер, не
+  идеально общий лимит на несколько воркеров; для точного лимита нужен
+  общий кэш, например Redis).
+- `POST /api/assistant/message/` — свой throttle (`assistant_message: 20/min`,
+  `ExternalUserRateThrottle` в `assistant/throttling.py`), считается по
+  `(channel, external_user_id)` из тела запроса, а не по IP/ключу — все
+  каналы шлют запросы с одного серверного IP под одним `X-Assistant-Key`,
+  обычный IP-throttle посчитал бы весь бот-трафик одним клиентом. Смысл —
+  не спам как таковой (ключ секретный), а стоимость: каждый вызов дёргает
+  платный Claude/OpenAI/DeepSeek, один навязчивый чат не должен разгонять
+  счёт.
+- Загрузка фото (`Lead.uploaded_photos`, `Review.photo`) — throttling не
+  спасает от одного запроса с гигантским вложением: `validate_image_size`
+  (`lors/validators.py`) режет каждый файл на 8 МБ, `uploaded_photos`
+  дополнительно ограничен 10 файлами за запрос (`MAX_UPLOADED_PHOTOS` в
+  `lors/serializers.py`).
+- `POST /api/meta-event/` — отдельный IP-based rate limit в самом
+  `lors/meta_capi.py` (`is_rate_limited`, в памяти процесса), не через DRF
+  throttling — эндпоинт всегда отвечает `204` даже отклонённым запросам
+  (фронту не с чем разбираться), просто тихо не шлёт событие в Meta.
+- `Review` — публикация на сайте всегда через модерацию: `is_published`
+  по умолчанию `False`, `GET /api/reviews/` отдаёт только опубликованные —
+  спам-отзыв не станет виден на сайте, даже если проходит throttling.
+- Что не сделано намеренно (следующий шаг, если спама станет много):
+  CAPTCHA (hCaptcha/Turnstile) на формах `Lead`/`Review` на фронте — сюда
+  бэкенду нужно только добавить проверку токена на `create()`; и/или
+  rate-limiting на уровне nginx (`limit_req`) как ещё один слой перед
+  Django.
+
 ## Импорт каталога из Google Sheets
 
 Таблица «LORS SYRIA» публичная. `scripts/fetch_sheet.py` скачивает каждый лист

@@ -93,6 +93,24 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Anon/user — общий потолок на все публичные эндпоинты (в основном от
+    # скрейпинга/DoS каталога), с запасом на обычный листинг/поиск фронтом.
+    # lead_create/review_create — заметно жёстче: это реальные точки спама
+    # (фейковые заказы/отзывы, с фото — расход диска), не листинг.
+    # Считается по кэшу Django (LocMemCache по умолчанию — т.е. отдельно на
+    # каждый gunicorn-воркер, не идеально общий лимит, но спамеру ощутимо
+    # режет throughput; для точного глобального лимита нужен Redis-кэш).
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '120/min',
+        'user': '300/min',
+        'lead_create': '5/hour',
+        'review_create': '10/hour',
+        'assistant_message': '20/min',
+    },
 }
 
 SPECTACULAR_SETTINGS = {

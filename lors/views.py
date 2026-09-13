@@ -4,6 +4,7 @@ from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from django.db.models import Prefetch
@@ -94,6 +95,15 @@ class LeadViewSet(
             return [permissions.AllowAny()]
         return [permissions.IsAdminUser()]
 
+    def get_throttles(self):
+        # Только create — листинг/просмотр лидов и так за IsAdminUser, тут не
+        # спам-риск. lead_create: 5/hour (см. settings.REST_FRAMEWORK) — этого
+        # с запасом хватает реальному клиенту (один заказ), но не флуду.
+        if self.action == 'create':
+            self.throttle_scope = 'lead_create'
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
 
 class ReviewViewSet(
     mixins.CreateModelMixin,
@@ -113,6 +123,12 @@ class ReviewViewSet(
         if self.action == 'create':
             return qs
         return qs.filter(is_published=True)
+
+    def get_throttles(self):
+        if self.action == 'create':
+            self.throttle_scope = 'review_create'
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
 
 
 class PriceCategoryViewSet(viewsets.ReadOnlyModelViewSet):
