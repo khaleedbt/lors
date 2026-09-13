@@ -5,6 +5,9 @@ from .models import (
     Brand, CarModel, Color, Contact, DeseOption, Lead, LeadPhoto, LogoOption, Material, Page, PriceCategory,
     PricingSettings, Product, ProductCategory, ProductVariant, Review, SiteSettings,
 )
+from .validators import validate_image_size
+
+MAX_UPLOADED_PHOTOS = 10
 
 
 class MaterialSerializer(serializers.ModelSerializer):
@@ -96,12 +99,14 @@ class LeadPhotoSerializer(serializers.ModelSerializer):
 
 
 class ImageListField(serializers.ListField):
-    child = serializers.ImageField()
+    child = serializers.ImageField(validators=[validate_image_size])
 
 
 class LeadSerializer(serializers.ModelSerializer):
     photos = LeadPhotoSerializer(many=True, read_only=True)
-    uploaded_photos = ImageListField(write_only=True, required=False)
+    # max_length — число файлов в запросе, не размер одного (см. validate_image_size
+    # на child) — иначе один POST мог принести сколько угодно фото разом.
+    uploaded_photos = ImageListField(write_only=True, required=False, max_length=MAX_UPLOADED_PHOTOS)
     total_price = serializers.SerializerMethodField()
 
     class Meta:
@@ -156,6 +161,8 @@ class LeadSerializer(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
+    photo = serializers.ImageField(validators=[validate_image_size], required=False)
+
     class Meta:
         model = Review
         fields = ['id', 'name', 'text', 'rating', 'source', 'photo', 'created_at']

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from .brain import handle_message
 from .permissions import HasAssistantKey
 from .serializers import AssistantMessageRequestSerializer, AssistantMessageResponseSerializer
+from .throttling import ExternalUserRateThrottle
 
 
 class AssistantMessageView(APIView):
@@ -20,8 +21,14 @@ class AssistantMessageView(APIView):
     он теперь именно такой тонкий HTTP-клиент, а не прямой Python-вызов.
 
     Закрыт заголовком X-Assistant-Key (см. permissions.HasAssistantKey) —
-    это внутренний сервисный вызов, не публичный эндпоинт."""
+    это внутренний сервисный вызов, не публичный эндпоинт.
+
+    throttle_classes переопределены (не общий Anon/User из settings) — все
+    каналы шлют запросы с одного серверного IP под одним ключом, обычный
+    IP-throttle посчитал бы весь бот-трафик одним клиентом. См.
+    ExternalUserRateThrottle — лимит на реального человека в чате."""
     permission_classes = [HasAssistantKey]
+    throttle_classes = [ExternalUserRateThrottle]
 
     @extend_schema(request=AssistantMessageRequestSerializer, responses=AssistantMessageResponseSerializer)
     def post(self, request):
