@@ -24,10 +24,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-q3q%ibng@ptw9mul+7cb!4qfqg8ocu(nhbbct&**p-st%-#!2n')
+SECRET_KEY = config('SECRET_KEY')
+if len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-'):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured('SECRET_KEY must be a random secret of at least 50 characters.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=lambda v: [s.strip() for s in v.split(',')])
 
@@ -111,7 +114,16 @@ META_PIXEL_ID = config('META_PIXEL_ID', default='')
 META_ACCESS_TOKEN = config('META_ACCESS_TOKEN', default='')
 META_TEST_EVENT_CODE = config('META_TEST_EVENT_CODE', default='')
 
+# Shared across local gunicorn workers. Redis can be configured for multiple hosts.
+CACHES = {
+    'default': {
+        'BACKEND': config('CACHE_BACKEND', default='django.core.cache.backends.filebased.FileBasedCache'),
+        'LOCATION': config('CACHE_LOCATION', default=str(BASE_DIR / '.cache' / 'django')),
+    },
+}
+
 REST_FRAMEWORK = {
+    'NUM_PROXIES': config('NUM_PROXIES', default=1, cast=int),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 50,
     'DEFAULT_FILTER_BACKENDS': [
@@ -123,9 +135,8 @@ REST_FRAMEWORK = {
     # скрейпинга/DoS каталога), с запасом на обычный листинг/поиск фронтом.
     # lead_create/review_create — заметно жёстче: это реальные точки спама
     # (фейковые заказы/отзывы, с фото — расход диска), не листинг.
-    # Считается по кэшу Django (LocMemCache по умолчанию — т.е. отдельно на
-    # каждый gunicorn-воркер, не идеально общий лимит, но спамеру ощутимо
-    # режет throughput; для точного глобального лимита нужен Redis-кэш).
+    # Shared file cache provides a common limit across local workers.
+    # Ingress nginx limits requests before Django parses uploads.
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',

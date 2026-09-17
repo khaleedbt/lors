@@ -26,7 +26,10 @@ import logging
 import re
 import threading
 import time
-from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
+
+from django.core.cache import cache
+from rest_framework.throttling import BaseThrottle
 
 import requests
 from django.conf import settings
@@ -39,28 +42,33 @@ REQUEST_TIMEOUT = 5  # секунд
 # Публичный эндпоинт — без белого списка в датасет можно залить что угодно.
 ALLOWED_EVENT_NAMES = {
     'PageView', 'ViewContent', 'Search', 'Lead', 'Contact', 'AddToCart',
-    'CustomizeProduct', 'InitiateCheckout', 'CompleteRegistration', 'Purchase',
+    'CustomizeProduct', 'InitiateCheckout', 'CompleteRegistration',
 }
 
-# Простой rate-limit в памяти процесса — не переживает рестарт и не
-# шарится между воркерами gunicorn, но и не должен: цель просто отсечь
-# явный abuse с одного IP, а не быть точным глобальным лимитером.
-_RATE_LIMIT = 60  # запросов
-_RATE_WINDOW = 60  # секунд
-_rate_buckets: dict[str, deque] = defaultdict(deque)
-_rate_lock = threading.Lock()
+# Bounded workers and queue: do not spawn a thread for every public request.
+_RATE_LIMIT = 60
+_RATE_WINDOW = 60
+_sender = ThreadPoolExecutor(max_workers=4, thread_name_prefix='meta-capi')
+_sender_slots = threading.BoundedSemaphore(16)
 
 
 def is_rate_limited(ip: str) -> bool:
-    now = time.monotonic()
-    with _rate_lock:
-        bucket = _rate_buckets[ip]
-        while bucket and now - bucket[0] > _RATE_WINDOW:
-            bucket.popleft()
-        if len(bucket) >= _RATE_LIMIT:
-            return True
-        bucket.append(now)
+    key = 'meta-rate:' + hashlib.sha256(ip.encode()).hexdigest()
+    # Fixed windows bound cache lifetime; nginx supplies the strict ingress limit.
+    key += ':' + str(int(time.time()) // _RATE_WINDOW)
+    if cache.add(key, 1, timeout=_RATE_WINDOW * 2):
         return False
+    try:
+        return cache.incr(key) > _RATE_LIMIT
+    except ValueError:
+        return True
+
+
+def _send_with_slot(event):
+    try:
+        send_to_meta(event)
+    finally:
+        _sender_slots.release()
 
 
 def _sha256(value: str) -> str:
@@ -88,12 +96,7 @@ def _normalize_text(raw: str | None) -> str | None:
 
 
 def get_client_ip(request) -> str | None:
-    # nginx пробрасывает оба заголовка (см. deploy/lorssy.com.nginx.conf на
-    # стороне lorssy-frontend) — иначе тут был бы IP сервера у всех лидов.
-    forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
-    if forwarded:
-        return forwarded.split(',')[0].strip()
-    return request.META.get('HTTP_X_REAL_IP') or request.META.get('REMOTE_ADDR')
+    return BaseThrottle().get_ident(request)
 
 
 def _derive_fbc_from_url(url: str) -> str | None:
@@ -200,23 +203,31 @@ def send_to_meta(event: dict) -> None:
 def build_and_send(request, body: dict) -> None:
     """Валидирует тело запроса от фронта и, если всё ок, шлёт в Meta в
     фоновом потоке (не блокирует ответ клиенту)."""
-    event_name = body.get('eventName')
-    event_id = body.get('eventId')
-    if event_name not in ALLOWED_EVENT_NAMES or not event_id or len(str(event_id)) < 8:
-        # Лучше потерять событие, чем задвоить лид без валидного event_id.
-        return
+    from .serializers import MetaEventSerializer
 
-    event_source_url = body.get('eventSourceUrl') or ''
+    serializer = MetaEventSerializer(data=body)
+    if not serializer.is_valid():
+        return
+    body = serializer.validated_data
+    event_name = body['eventName']
+    event_id = body['eventId']
+    event_source_url = body.get('eventSourceUrl', '')
     event = {
         'event_name': event_name,
         'event_time': int(time.time()),
-        'event_id': str(event_id),
+        'event_id': event_id,
         'event_source_url': event_source_url,
-        'action_source': 'system_generated' if event_name == 'Purchase' else 'website',
-        'user_data': build_user_data(request, body.get('user') or {}, event_source_url),
+        'action_source': 'website',
+        'user_data': build_user_data(request, body.get('user', {}), event_source_url),
     }
-    custom_data = body.get('customData')
-    if custom_data:
-        event['custom_data'] = custom_data
-
-    threading.Thread(target=send_to_meta, args=(event,), daemon=True).start()
+    if body.get('customData'):
+        event['custom_data'] = body['customData']
+    if not settings.META_PIXEL_ID or not settings.META_ACCESS_TOKEN:
+        return
+    if not _sender_slots.acquire(blocking=False):
+        return
+    try:
+        _sender.submit(_send_with_slot, event)
+    except Exception:
+        _sender_slots.release()
+        logger.exception('Unable to queue Meta event')

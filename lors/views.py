@@ -8,6 +8,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from django.db.models import Prefetch
+from django.core.files.storage import default_storage
+from django.http import FileResponse, Http404
+from pathlib import PurePosixPath
 
 from . import meta_capi
 from .filters import CarModelFilter
@@ -20,7 +23,7 @@ from .search import smart_search_car_models
 from .serializers import (
     BrandSerializer, CarModelSerializer, ColorSerializer, DeseOptionSerializer, LeadSerializer,
     LogoOptionSerializer, MaterialSerializer, PageSerializer, PriceCategorySerializer, PricingSettingsSerializer,
-    ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer,
+    ProductCategorySerializer, ProductSerializer, ReviewSerializer, SiteSettingsSerializer, MetaEventSerializer,
 )
 
 
@@ -223,8 +226,26 @@ class MetaEventView(APIView):
     authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(request=MetaEventSerializer, responses={204: None})
     def post(self, request):
         ip = meta_capi.get_client_ip(request) or 'unknown'
         if is_allowed_origin(request) and not meta_capi.is_rate_limited(ip):
             meta_capi.build_and_send(request, request.data if hasattr(request, 'data') else {})
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LeadPhotoView(APIView):
+    schema = None
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request, filename):
+        if any(part in ('.', '..') for part in filename.split('/')) or PurePosixPath(filename).is_absolute():
+            raise Http404
+        try:
+            photo = default_storage.open('leads/' + filename, 'rb')
+        except FileNotFoundError:
+            raise Http404
+        response = FileResponse(photo, as_attachment=True, filename=PurePosixPath(filename).name)
+        response['Cache-Control'] = 'private, no-store'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response

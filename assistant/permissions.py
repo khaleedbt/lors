@@ -1,4 +1,5 @@
 from django.conf import settings
+from secrets import compare_digest
 from rest_framework import permissions
 
 
@@ -13,4 +14,4 @@ class HasAssistantKey(permissions.BasePermission):
 
     def has_permission(self, request, view):
         key = request.headers.get('X-Assistant-Key', '')
-        return bool(settings.ASSISTANT_API_KEY) and key == settings.ASSISTANT_API_KEY
+        return bool(settings.ASSISTANT_API_KEY) and compare_digest(key.encode(), settings.ASSISTANT_API_KEY.encode())

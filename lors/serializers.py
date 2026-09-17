@@ -55,8 +55,8 @@ class CarModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = CarModel
         fields = [
-            'id', 'brand', 'name', 'template_code', 'car_type', 'driver_cut',
-            'package', 'second_row_package', 'notes', 'video_url', 'sheet_row', 'price_category',
+            'id', 'brand', 'name', 'car_type', 'driver_cut',
+            'package', 'second_row_package', 'video_url', 'price_category',
             'base_model', 'body_variant', 'year_from', 'year_to',
         ]
 
@@ -187,3 +187,29 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = SiteSettings
         fields = ['address', 'latitude', 'longitude', 'about', 'contacts']
+
+
+class MetaUserSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
+    firstName = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    lastName = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    city = serializers.CharField(max_length=150, required=False, allow_blank=True)
+    country = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    externalId = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+
+class MetaEventSerializer(serializers.Serializer):
+    from .meta_capi import ALLOWED_EVENT_NAMES
+
+    eventName = serializers.ChoiceField(choices=sorted(ALLOWED_EVENT_NAMES))
+    eventId = serializers.CharField(min_length=8, max_length=128)
+    eventSourceUrl = serializers.URLField(max_length=2048, required=False, allow_blank=True)
+    user = MetaUserSerializer(required=False)
+    customData = serializers.JSONField(required=False)
+
+    def validate_customData(self, value):
+        import json
+        if not isinstance(value, dict) or len(json.dumps(value)) > 8192:
+            raise serializers.ValidationError('Expected an object of at most 8192 characters.')
+        return value

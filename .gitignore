@@ -22,3 +22,8 @@ media/
 .vscode/
 .idea/
 .DS_Store
+
+# Sensitive database backups and shared cache
+*.sql
+*.dump
+.cache/
