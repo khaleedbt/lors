@@ -55,7 +55,7 @@ cp .env.example .env
 | `DEEPSEEK_API_KEY`   | ключ DeepSeek API (нужен, если в /admin/ выбран провайдер DeepSeek) |
 | `ASSISTANT_API_KEY`  | секрет для вызова `/api/assistant/message/` (канал-адаптер → бэкенд); пустым быть не должно — см. `assistant/permissions.py` |
 | `BACKEND_BASE_URL`   | адрес бэкенда для бота (по умолчанию `http://127.0.0.1:8000`) |
-| `META_PIXEL_ID` / `META_ACCESS_TOKEN` | Meta Conversions API (см. `lors/meta_capi.py`); пусты по умолчанию — интеграция no-op, пока не заведён Pixel в Meta Business Manager |
+| `META_DATASET_ID` / `META_CAPI_TOKEN` | Meta Conversions API (см. `lors/meta_capi.py` и раздел ниже); пусты по умолчанию — интеграция no-op, пока не заведён датасет в Meta Business Manager. Старые имена `META_PIXEL_ID`/`META_ACCESS_TOKEN` тоже читаются как фоллбэк |
 | `META_TEST_EVENT_CODE` | код тестового прогона событий в Meta Events Manager (необязательно) |
 
 ## Запуск
