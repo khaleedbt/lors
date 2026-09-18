@@ -36,7 +36,7 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-API_VERSION = 'v21.0'
+API_VERSION = 'v25.0'  # версия из ТЗ/референс-реализации lorssy-frontend
 REQUEST_TIMEOUT = 5  # секунд
 
 # Публичный эндпоинт — без белого списка в датасет можно залить что угодно.

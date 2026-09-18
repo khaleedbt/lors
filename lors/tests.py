@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 from . import meta_capi
 from .serializers import MetaEventSerializer
-from .views import LeadPhotoView
+from .views import LeadPhotoView, MetaEventView
 
 
 @override_settings(CACHES={'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}})
@@ -71,6 +71,24 @@ class SecurityTests(SimpleTestCase):
                 response.close()
                 self.assertEqual(response['Cache-Control'], 'private, no-store')
                 self.assertEqual(view(request, filename='../secret').status_code, 404)
+
+    def test_meta_event_always_returns_204_even_on_malformed_body(self):
+        # request.data — ленивое свойство: битый JSON бросает ParseError
+        # ПРИ ОБРАЩЕНИИ, hasattr() это не ловит (атрибут есть всегда,
+        # исключение не AttributeError). Раньше это долетало до
+        # стандартного DRF exception handler и отдавало 400, нарушая
+        # задокументированный контракт "всегда 204" (см. MetaEventView).
+        factory = APIRequestFactory()
+        view = MetaEventView.as_view()
+        for body, content_type in [
+            (b'not-json-at-all{{{', 'application/json'),
+            (b'', 'application/json'),
+            (b'"a string, not an object"', 'application/json'),
+        ]:
+            request = factory.post(
+                '/api/meta-event/', data=body, content_type=content_type, HTTP_ORIGIN='https://lorssy.com',
+            )
+            self.assertEqual(view(request).status_code, 204)
 
     def test_catalog_does_not_expose_internal_fields(self):
         from .serializers import CarModelSerializer

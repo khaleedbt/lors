@@ -222,15 +222,27 @@ class MetaEventView(APIView):
     а любой другой статус только зашумил бы консоль пользователя без
     пользы. Поэтому Origin-проверка (см. lors/permissions.py) здесь не
     permission_classes (это дало бы 403), а тихий пропуск отправки —
-    тот же принцип, что уже был у is_rate_limited ниже."""
+    тот же принцип, что уже был у is_rate_limited ниже.
+
+    ⚠️ request.data — ленивое свойство: битый JSON в теле бросает
+    ParseError ПРИ ОБРАЩЕНИИ к нему, а не заранее — `hasattr(request,
+    'data')` этого не ловит (hasattr гасит только AttributeError,
+    'data' как атрибут у Request есть всегда). Без явного try/except
+    DRF-исключение долетало до стандартного exception handler и отдавало
+    400 — нарушая контракт "всегда 204" выше. Проверено: POST с телом
+    'not-json-at-all{{{' до фикса возвращал 400."""
     authentication_classes = [CsrfExemptSessionAuthentication, BasicAuthentication]
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(request=MetaEventSerializer, responses={204: None})
     def post(self, request):
         ip = meta_capi.get_client_ip(request) or 'unknown'
+        try:
+            body = request.data
+        except Exception:
+            body = {}
         if is_allowed_origin(request) and not meta_capi.is_rate_limited(ip):
-            meta_capi.build_and_send(request, request.data if hasattr(request, 'data') else {})
+            meta_capi.build_and_send(request, body)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

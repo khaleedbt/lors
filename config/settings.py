@@ -108,10 +108,16 @@ DEEPSEEK_API_KEY = config('DEEPSEEK_API_KEY', default='')
 ASSISTANT_API_KEY = config('ASSISTANT_API_KEY', default='')
 BACKEND_BASE_URL = config('BACKEND_BASE_URL', default='http://127.0.0.1:8000')
 
-# Meta Conversions API (см. lors/meta_capi.py). Пока Pixel ID/токен не заведены в
-# Business Manager — META_PIXEL_ID пуст, и отправка событий тихо no-op'ится.
-META_PIXEL_ID = config('META_PIXEL_ID', default='')
-META_ACCESS_TOKEN = config('META_ACCESS_TOKEN', default='')
+# Meta Conversions API (см. lors/meta_capi.py). Канонические имена — из ТЗ
+# (и из референс-реализации в lorssy-frontend/deploy/django-meta-event-
+# reference.py): META_DATASET_ID/META_CAPI_TOKEN. META_PIXEL_ID/
+# META_ACCESS_TOKEN — старые имена этих же переменных (так были названы при
+# первой реализации, до появления письменного ТЗ) — читаются как фоллбэк,
+# чтобы уже настроенный прод не сломался молча при переименовании; новые
+# развёртывания заводить под каноническими именами. Пока не заданы ни те,
+# ни другие — отправка событий тихо no-op'ится (эндпоинт всё равно 204).
+META_PIXEL_ID = config('META_DATASET_ID', default=config('META_PIXEL_ID', default=''))
+META_ACCESS_TOKEN = config('META_CAPI_TOKEN', default=config('META_ACCESS_TOKEN', default=''))
 META_TEST_EVENT_CODE = config('META_TEST_EVENT_CODE', default='')
 
 # Shared across local gunicorn workers. Redis can be configured for multiple hosts.
